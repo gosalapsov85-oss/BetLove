@@ -92,7 +92,6 @@ function getDecimalOdd(item) {
 
 async function fetchAllOdds() {
   const all = [];
-  // Пробуем забрать до 3 страниц или большой лимит с фильтром по moneyline
   const urls = [
     '/odds/best?market_type=moneyline&limit=500',
     '/odds/best?market_type=moneyline&limit=500&offset=500',
@@ -142,3 +141,83 @@ async function syncUpcomingFixtures() {
 
     const evId = String(item.event_id ?? '');
     if (!evId) continue;
+
+    const teams = parseTeams(item.event_name);
+    if (!teams) continue;
+
+    const odd = getDecimalOdd(item);
+    if (!odd) continue;
+
+    if (!grouped.has(evId)) {
+      grouped.set(evId, {
+        team1: teams.team1,
+        team2: teams.team2,
+        sport: item.sport || '',
+        league: item.league || '',
+        start_time: item.start_time || eventsTimeMap.get(evId) || null,
+        p1: null,
+        p2: null,
+        draw: null
+      });
+    }
+
+    const entry = grouped.get(evId);
+    const sel = String(item.selection ?? '').trim().toLowerCase();
+    const t1 = entry.team1.toLowerCase();
+    const t2 = entry.team2.toLowerCase();
+
+    if (sel === t1 || sel.includes(t1) || t1.includes(sel)) {
+      entry.p1 = odd;
+    } else if (sel === t2 || sel.includes(t2) || t2.includes(sel)) {
+      entry.p2 = odd;
+    } else if (sel === 'draw' || sel === 'tie' || sel === 'x') {
+      entry.draw = odd;
+    }
+  }
+
+  const payload = [];
+  for (const [evId, g] of grouped.entries()) {
+    if (!g.p1 || !g.p2) continue;
+
+    const tournament = formatLeagueName(g.league || g.sport || 'Турнир');
+    const category = mapCategory(g.sport, g.league);
+    const outcomes = [{ name: 'П1', odd: g.p1 }];
+    if (g.draw) outcomes.push({ name: 'Х', odd: g.draw });
+    outcomes.push({ name: 'П2', odd: g.p2 });
+
+    payload.push({
+      id: 'ext_' + evId.replace(/[^a-zA-Z0-9_-]/g, '_'),
+      external_id: evId,
+      title: `${g.team1} vs ${g.team2}`,
+      category,
+      tournament,
+      format: inferFormat(category, tournament),
+      start_time: g.start_time || new Date(Date.now() + 7200000).toISOString(),
+      status: 'prematch',
+      outcomes,
+      extra_markets: []
+    });
+  }
+
+  if (payload.length === 0) {
+    console.log('No complete moneyline matches assembled.');
+    return;
+  }
+
+  const batch = payload.slice(0, 120);
+  const { error } = await sb.rpc('admin_upsert_events', { p_events: batch });
+  if (error) {
+    throw new Error('Supabase admin_upsert_events error: ' + error.message);
+  }
+  console.log(`Synced ${batch.length} matches with real team names and decimal odds.`);
+}
+
+(async function main() {
+  try {
+    await syncUpcomingFixtures();
+    console.log('Sync completed successfully.');
+  } catch (err) {
+    console.error('Sync failed:', err.message);
+    process.exit(1);
+  }
+})();
