@@ -109,7 +109,7 @@ async function syncUpcomingFixtures() {
         : [];
 
   if (list.length === 0) {
-    console.log('No upcoming events returned by SharpAPI.');
+    console.log('No upcoming events returned by SharpAPI. Sample:', JSON.stringify(rawData).slice(0, 400));
     return;
   }
 
@@ -142,7 +142,7 @@ async function syncUpcomingFixtures() {
   }
 
   if (payload.length === 0) {
-    console.log('No events with real odds extracted from SharpAPI.');
+    console.log('No events with real odds extracted. Sample event:', JSON.stringify(list[0]).slice(0, 400));
     return;
   }
 
