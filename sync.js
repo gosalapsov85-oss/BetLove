@@ -59,44 +59,69 @@ function parseJsonArray(val) {
 function priceToOdd(priceRaw) {
   const p = Number(priceRaw);
   if (!Number.isFinite(p) || p <= 0.02 || p >= 0.98) return null;
-  // Букмекерская маржа ~7% (множитель 0.93)
   const odd = Number((0.93 / p).toFixed(2));
   return odd >= 1.03 && odd <= 35 ? odd : null;
 }
 
+// ВАЖНО: сначала проверяем Dota 2, Valorant и LoL, чтобы общие теги (PGL, ESL, BLAST) не улетали в CS2!
 function detectEsportsCategory(raw = '') {
   const s = String(raw).toLowerCase();
+  if (s.includes('dota') || s.includes('wallachia') || s.includes('dreamleague')) return 'Dota 2';
+  if (s.includes('valorant') || /\bvct\b/.test(s)) return 'Valorant';
+  if (s.includes('league of legends') || s.includes('league-of-legends') || /\blol\b|\blck\b|\blpl\b|\blec\b/.test(s)) return 'LoL';
   if (
     s.includes('counter-strike') ||
     s.includes('counter strike') ||
-    /\bcs2\b|\bcsgo\b|\bcs-2\b|\bpgl\b|\biem\b|\bblast\b|\besl\b|\bcct\b/.test(s)
+    /\bcs2\b|\bcsgo\b|\bcs-2\b|\bpgl\b|\biem\b|\bblast\b|\besl\b|\bcct\b|\bmajor\b/.test(s)
   ) return 'CS2';
-  if (s.includes('dota')) return 'Dota 2';
-  if (s.includes('valorant')) return 'Valorant';
-  if (s.includes('league of legends') || s.includes('league-of-legends') || /\blol\b/.test(s)) return 'LoL';
   return null;
 }
 
 function parseMatchTitle(title = '') {
-  let clean = String(title)
-    .replace(/^.*?(?:CS2|CS:GO|Dota 2|Valorant|LoL|Counter-Strike(?:\s*2)?)\s*:\s*/i, '')
-    .replace(/\s*\((?:BO\d|Best of \d|Map \d)\)\s*/gi, '')
-    .trim();
-
+  let raw = String(title).trim();
   let extractedTournament = '';
-  const dashSplit = clean.split(/\s+[-—]\s+/);
-  if (dashSplit.length >= 2 && /\b(?:vs\.?|v\.?)\b/i.test(dashSplit[0])) {
-    clean = dashSplit[0].trim();
-    extractedTournament = dashSplit.slice(1).join(' — ').trim();
+
+  // 1. Убираем префиксы игры: "Counter-Strike:", "CS2:", "Counter-Strike 2 -" и т.д.
+  raw = raw.replace(/^(?:Counter-Strike(?:\s*2)?|CS2|CS:GO|Dota\s*2|Valorant|LoL)\s*[:\-—]\s*/i, '').trim();
+
+  // 2. Если есть двоеточие вида "PGL Major Singapore: Team A vs Team B"
+  const colonIdx = raw.indexOf(':');
+  if (colonIdx !== -1) {
+    const left = raw.slice(0, colonIdx).trim();
+    const right = raw.slice(colonIdx + 1).trim();
+    if (/\b(?:vs\.?|v\.?)\b/i.test(right) && !/\b(?:vs\.?|v\.?)\b/i.test(left)) {
+      extractedTournament = left;
+      raw = right;
+    }
   }
 
-  const parts = clean.split(/\s+(?:vs\.?|v\.?)\s+/i);
+  // 3. Отделяем хвост турнира после " - " или " — " или " | " (например: "NAVI vs G2 - PGL Major Singapore")
+  const tailSplit = raw.split(/\s+(?:[-—|])\s+/);
+  if (tailSplit.length >= 2 && /\b(?:vs\.?|v\.?)\b/i.test(tailSplit[0])) {
+    raw = tailSplit[0].trim();
+    const tailText = tailSplit.slice(1).join(' — ').trim();
+    if (!extractedTournament) extractedTournament = tailText;
+  }
+
+  // 4. Вычищаем из названия матча скобки с форматом/стадией: (BO1), (BO3), (Major), (Stage 2)
+  raw = raw
+    .replace(/\s*\((?:BO\d|Best of \d|Map \d|Major|Stage \d|Playoffs|Group [A-Z])\)\s*/gi, '')
+    .trim();
+
+  // 5. Делим строго по "vs" / "vs."
+  const parts = raw.split(/\s+(?:vs\.?|v\.?)\s+/i);
   if (parts.length === 2 && parts[0].trim() && parts[1].trim()) {
-    return {
-      team1: parts[0].trim(),
-      team2: parts[1].trim(),
-      extractedTournament
-    };
+    // Дополнительная зачистка хвостов у второй команды (если написали "Team B Major" или "Team B BO3")
+    const cleanT1 = parts[0].replace(/\s*\b(?:BO[1235]|Major)\b\s*$/i, '').trim();
+    const cleanT2 = parts[1].replace(/\s*\b(?:BO[1235]|Major)\b\s*$/i, '').trim();
+
+    if (cleanT1 && cleanT2) {
+      return {
+        team1: cleanT1,
+        team2: cleanT2,
+        extractedTournament
+      };
+    }
   }
   return null;
 }
@@ -124,7 +149,6 @@ function pickPolymarketMainMarket(ev) {
   return mainMarket || null;
 }
 
-// 1. Polymarket Gamma API: живые рыночные коэффициенты с маржой для CS2 (включая Major), Dota 2, Valorant и LoL
 async function fetchPolymarketEsports() {
   const tagQueries = new Map();
 
@@ -192,7 +216,10 @@ async function fetchPolymarketEsports() {
     const title = String(ev.title || '').trim();
     const tagsText = (ev.tags || []).map((t) => `${t.label || ''} ${t.slug || ''}`).join(' ');
     const seriesText = (ev.series || []).map((s) => `${s.title || ''} ${s.slug || ''}`).join(' ');
-    const category = detectEsportsCategory(`${title} ${ev.slug || ''} ${tagsText} ${seriesText}`) || hintCategory;
+    const fullMeta = `${title} ${ev.slug || ''} ${tagsText} ${seriesText}`;
+
+    // Определяем категорию по полному тексту, и только если не ясно — берём hintCategory
+    const category = detectEsportsCategory(fullMeta) || hintCategory;
     if (!category) continue;
 
     const parsed = parseMatchTitle(title);
@@ -206,7 +233,6 @@ async function fetchPolymarketEsports() {
     const startMs = new Date(rawStart).getTime();
     if (!Number.isFinite(startMs)) continue;
 
-    // Отсекаем только давно завершившиеся матчи (старше 5 часов назад)
     if (startMs < nowMs - 5 * 3600 * 1000) continue;
 
     const outcomesArr = parseJsonArray(mainMarket.outcomes);
@@ -230,7 +256,16 @@ async function fetchPolymarketEsports() {
     const liq = Number(mainMarket.liquidityNum ?? mainMarket.liquidity ?? ev.liquidity ?? 0);
     if (p1 === 1.86 && p2 === 1.86 && vol < 1 && liq < 1) continue;
 
-    const tournament = parsed.extractedTournament || ev.series?.[0]?.title || `${category} Pro Match`;
+    // Красивое название турнира (если это Major — подписываем PGL Major Singapore 2026)
+    let tournament = parsed.extractedTournament || ev.series?.[0]?.title || '';
+    if (!tournament || /major/i.test(fullMeta) && !/major/i.test(tournament)) {
+      if (/singapore|major/i.test(fullMeta) && category === 'CS2') {
+        tournament = 'PGL Major Singapore 2026';
+      } else if (!tournament) {
+        tournament = `${category} Pro Match`;
+      }
+    }
+
     const formatMatch = `${title} ${mainMarket.question || ''}`.match(/\bBO[1235]\b/i);
     const format = formatMatch ? formatMatch[0].toUpperCase() : 'BO3';
 
@@ -337,7 +372,6 @@ function getDecimalOdd(item) {
   return null;
 }
 
-// 2. SharpAPI: реальный классический спорт
 async function fetchSharpClassicSports() {
   if (!SHARPAPI_KEY) return [];
 
@@ -443,7 +477,6 @@ async function fetchSharpClassicSports() {
   return results;
 }
 
-// 3. Авторасчёт завершённых матчей с Polymarket и SharpAPI
 async function settlePolymarketEvent(dbEv) {
   const rawExt = String(dbEv.external_id || dbEv.id.split('_').pop() || '');
   const pmId = rawExt.replace(/^pm_/, '');
