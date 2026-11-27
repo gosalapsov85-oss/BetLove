@@ -41,10 +41,27 @@ function formatLeagueName(raw = '') {
     .trim();
 }
 
+function isVirtualSportsSim(sportName = '', leagueName = '', eventName = '') {
+  const s = `${sportName} ${leagueName} ${eventName}`.toLowerCase();
+  return (
+    s.includes('esoccer') ||
+    s.includes('efootball') ||
+    s.includes('ebasketball') ||
+    s.includes('ehockey') ||
+    s.includes('etennis') ||
+    s.includes('gg league') ||
+    s.includes('battle') ||
+    s.includes('fifa') ||
+    s.includes('nba 2k') ||
+    s.includes('nba2k')
+  );
+}
+
 function mapCategory(sportName = '', leagueName = '') {
   const s = `${sportName} ${leagueName}`.toLowerCase();
-  if (s.includes('counter') || s.includes('cs2') || s.includes('cs:go') || s.includes('csgo') || s.includes('esport')) return 'CS2';
-  if (s.includes('dota')) return 'Dota 2';
+  if (s.includes('counter') || s.includes('cs2') || s.includes('cs:go') || s.includes('csgo') || s.includes('blast') || s.includes('esl') || s.includes('iem') || s.includes('pgl') || s.includes('cct')) return 'CS2';
+  if (s.includes('dota') || s.includes('dreamleague') || s.includes('international')) return 'Dota 2';
+  if (s.includes('valorant') || s.includes('lol') || s.includes('league of legends') || s.includes('esport')) return 'Киберспорт';
   if (s.includes('football') || s.includes('soccer') || s.includes('copa') || s.includes('liga') || s.includes('premier')) return 'Футбол';
   if (s.includes('hockey') || s.includes('nhl') || s.includes('khl')) return 'Хоккей';
   if (s.includes('basket') || s.includes('nba')) return 'Баскетбол';
@@ -58,7 +75,7 @@ function inferFormat(category = '', tournamentName = '') {
   if (t.includes('bo5')) return 'BO5';
   if (t.includes('bo1')) return 'BO1';
   if (t.includes('bo3')) return 'BO3';
-  if (category === 'CS2' || category === 'Dota 2') return 'BO3';
+  if (category === 'CS2' || category === 'Dota 2' || category === 'Киберспорт') return 'BO3';
   if (category === 'Теннис') return 'Сеты';
   return 'Матч';
 }
@@ -90,52 +107,40 @@ function getDecimalOdd(item) {
   return null;
 }
 
-async function discoverEsportsKeys() {
-  const keys = new Set(['esports', 'cs2', 'dota2', 'counter-strike']);
-  try {
-    const raw = await fetchSharp('/sports');
-    const list = extractArray(raw);
-    console.log('Available /sports:', JSON.stringify(list).slice(0, 700));
-    for (const s of list) {
-      const id = String(s.id ?? s.key ?? s.slug ?? s.name ?? '').toLowerCase();
-      if (id.includes('esport') || id.includes('cs') || id.includes('counter') || id.includes('dota') || id.includes('gaming')) {
-        keys.add(String(s.id ?? s.key ?? s.slug ?? s.name));
-      }
-    }
-  } catch (err) {
-    console.warn('Could not fetch /sports:', err.message);
-  }
-  return Array.from(keys);
-}
-
-async function fetchAllOdds(esportsKeys) {
+async function fetchAllOdds() {
   const all = [];
-  const urls = [];
+  const urls = [
+    '/odds/best?sport=esports&limit=1000',
+    '/odds/best?sport=cs2&limit=500',
+    '/odds/best?sport=dota2&limit=500',
+    '/odds/best?market_type=moneyline&limit=500'
+  ];
 
-  for (const sport of esportsKeys) {
-    urls.push(`/odds/best?sport=${encodeURIComponent(sport)}&limit=300`);
-  }
-  urls.push('/odds/best?market_type=moneyline&limit=500');
-  urls.push('/odds/best?limit=500');
+  const seenEsportsLeagues = new Set();
 
   for (const u of urls) {
     try {
       const raw = await fetchSharp(u);
       const list = extractArray(raw);
       all.push(...list);
+      for (const item of list) {
+        if (String(item.sport || '').toLowerCase().includes('esport') && item.league) {
+          seenEsportsLeagues.add(item.league);
+        }
+      }
       console.log(`Fetched ${list.length} rows from ${u}`);
     } catch (err) {
       console.warn(`Skip ${u}: ${err.message}`);
     }
     await sleep(250);
   }
+
+  console.log('Esports leagues in SharpAPI:', Array.from(seenEsportsLeagues).join(', ') || 'none');
   return all;
 }
 
 async function syncUpcomingFixtures() {
-  const esportsKeys = await discoverEsportsKeys();
   const eventsTimeMap = new Map();
-
   try {
     const rawEvents = await fetchSharp('/events?limit=500');
     for (const ev of extractArray(rawEvents)) {
@@ -149,9 +154,7 @@ async function syncUpcomingFixtures() {
 
   await sleep(250);
 
-  const oddsList = await fetchAllOdds(esportsKeys);
-  console.log(`Total odds entries collected: ${oddsList.length}`);
-
+  const oddsList = await fetchAllOdds();
   const grouped = new Map();
 
   for (const item of oddsList) {
@@ -160,6 +163,8 @@ async function syncUpcomingFixtures() {
       continue;
     }
     if (item.is_main_line === false) continue;
+
+    if (isVirtualSportsSim(item.sport, item.league, item.event_name)) continue;
 
     const evId = String(item.event_id ?? '');
     if (!evId) continue;
@@ -221,15 +226,13 @@ async function syncUpcomingFixtures() {
     });
   }
 
-  // Киберспорт ставим в начало списка, чтобы не обрезался лимитом батча
   payload.sort((a, b) => {
-    const aEsp = a.category === 'CS2' || a.category === 'Dota 2' ? 0 : 1;
-    const bEsp = b.category === 'CS2' || b.category === 'Dota 2' ? 0 : 1;
-    return aEsp - bEsp;
+    const rank = (c) => (c === 'CS2' ? 0 : c === 'Dota 2' ? 1 : c === 'Киберспорт' ? 2 : 3);
+    return rank(a.category) - rank(b.category);
   });
 
   if (payload.length === 0) {
-    console.log('No complete moneyline matches assembled.');
+    console.log('No complete matches assembled.');
     return;
   }
 
@@ -238,7 +241,7 @@ async function syncUpcomingFixtures() {
   if (error) {
     throw new Error('Supabase admin_upsert_events error: ' + error.message);
   }
-  console.log(`Synced ${batch.length} matches (CS2/Dota prioritized).`);
+  console.log(`Synced ${batch.length} real matches (virtual e-sports sims excluded).`);
 }
 
 (async function main() {
