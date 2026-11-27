@@ -12,7 +12,7 @@ if (!SHARPAPI_KEY || !SUPABASE_SERVICE_KEY) {
 const sb = createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY);
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
-async function fetchJson(url) {
+async function tryFetch(url) {
   const res = await fetch(url, {
     headers: {
       Authorization: `Bearer ${SHARPAPI_KEY}`,
@@ -20,11 +20,11 @@ async function fetchJson(url) {
       Accept: 'application/json'
     }
   });
+  const text = await res.text();
   if (!res.ok) {
-    const txt = await res.text();
-    throw new Error(`HTTP ${res.status}: ${txt.slice(0, 200)}`);
+    throw new Error(`HTTP ${res.status}: ${text.slice(0, 150)}`);
   }
-  return res.json();
+  return JSON.parse(text);
 }
 
 function mapCategory(sportName = '', leagueName = '') {
@@ -80,25 +80,37 @@ function extractOutcomesFromEvent(ev) {
 }
 
 async function syncUpcomingFixtures() {
+  const base = 'https://api.sharpapi.io/api/v1';
   const candidateUrls = [
-    `https://api.sharpapi.io/v1/odds?apiKey=${encodeURIComponent(SHARPAPI_KEY)}`,
-    `https://api.sharpapi.io/v1/events?apiKey=${encodeURIComponent(SHARPAPI_KEY)}`
+    `${base}/odds`,
+    `${base}/events`,
+    `${base}/fixtures`,
+    `${base}/games`,
+    `${base}/matches`,
+    `${base}/sports`,
+    `${base}/bookmakers`
   ];
 
   let rawData = null;
-  let lastErr = null;
+  let workingUrl = '';
+
   for (const url of candidateUrls) {
     try {
-      rawData = await fetchJson(url);
+      rawData = await tryFetch(url);
+      workingUrl = url;
+      console.log(`Working endpoint found: ${workingUrl}`);
       break;
     } catch (err) {
-      lastErr = err;
+      console.log(`Probe ${url} -> ${err.message}`);
     }
+    await sleep(300);
   }
 
   if (!rawData) {
-    throw new Error(`SharpAPI request failed: ${lastErr?.message || 'unknown error'}`);
+    throw new Error('None of the candidate SharpAPI endpoints responded with 200 OK.');
   }
+
+  console.log('Sample response:', JSON.stringify(rawData).slice(0, 600));
 
   const list = Array.isArray(rawData)
     ? rawData
@@ -109,7 +121,7 @@ async function syncUpcomingFixtures() {
         : [];
 
   if (list.length === 0) {
-    console.log('No upcoming events returned by SharpAPI. Sample:', JSON.stringify(rawData).slice(0, 400));
+    console.log('Response did not contain an event array directly.');
     return;
   }
 
@@ -142,24 +154,8 @@ async function syncUpcomingFixtures() {
   }
 
   if (payload.length === 0) {
-    console.log('No events with real odds extracted. Sample event:', JSON.stringify(list[0]).slice(0, 400));
+    console.log('No events with real odds extracted yet — check Sample response in logs.');
     return;
   }
 
-  const { error } = await sb.rpc('admin_upsert_events', { p_events: payload });
-  if (error) {
-    throw new Error('Supabase admin_upsert_events error: ' + error.message);
-  }
-  console.log(`Synced ${payload.length} upcoming fixtures with real odds from SharpAPI.`);
-}
-
-(async function main() {
-  try {
-    await syncUpcomingFixtures();
-    await sleep(500);
-    console.log('Sync completed successfully.');
-  } catch (err) {
-    console.error('Sync failed:', err.message);
-    process.exit(1);
-  }
-})();
+  const { error } =
