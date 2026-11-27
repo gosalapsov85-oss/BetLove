@@ -58,14 +58,15 @@ function parseJsonArray(val) {
 
 function priceToOdd(priceRaw) {
   const p = Number(priceRaw);
-  if (!Number.isFinite(p) || p <= 0.01 || p >= 0.99) return null;
-  const odd = Number((1 / p).toFixed(2));
-  return odd >= 1.02 && odd <= 50 ? odd : null;
+  if (!Number.isFinite(p) || p <= 0.02 || p >= 0.98) return null;
+  // Букмекерская маржа ~7% (множитель 0.93), чтобы кэфы были как в БК (1.86/1.86 вместо 2.00/2.00)
+  const odd = Number((0.93 / p).toFixed(2));
+  return odd >= 1.03 && odd <= 35 ? odd : null;
 }
 
 function detectEsportsCategory(raw = '') {
   const s = String(raw).toLowerCase();
-  if (s.includes('counter-strike') || s.includes('counter strike') || /\bcs2\b|\bcsgo\b/.test(s)) return 'CS2';
+  if (s.includes('counter-strike') || s.includes('counter strike') || /\bcs2\b|\bcsgo\b|\bcs-2\b/.test(s)) return 'CS2';
   if (s.includes('dota')) return 'Dota 2';
   if (s.includes('valorant')) return 'Valorant';
   if (s.includes('league of legends') || s.includes('league-of-legends') || /\blol\b/.test(s)) return 'LoL';
@@ -74,8 +75,8 @@ function detectEsportsCategory(raw = '') {
 
 function parseMatchTitle(title = '') {
   let clean = String(title)
-    .replace(/^.*?(?:CS2|Dota 2|Valorant|LoL|Counter-Strike)\s*:\s*/i, '')
-    .replace(/\s*\((?:BO\d|Best of \d)\)\s*/gi, '')
+    .replace(/^.*?(?:CS2|CS:GO|Dota 2|Valorant|LoL|Counter-Strike(?:\s*2)?)\s*:\s*/i, '')
+    .replace(/\s*\((?:BO\d|Best of \d|Map \d)\)\s*/gi, '')
     .trim();
 
   let extractedTournament = '';
@@ -96,7 +97,7 @@ function parseMatchTitle(title = '') {
   return null;
 }
 
-// 1. Polymarket Gamma API: живые рыночные коэффициенты для CS2, Dota 2, Valorant и LoL (без ключа)
+// 1. Polymarket Gamma API: живые рыночные коэффициенты с маржой для CS2, Dota 2, Valorant и LoL
 async function fetchPolymarketEsports() {
   const tagQueries = new Map();
 
@@ -117,11 +118,16 @@ async function fetchPolymarketEsports() {
   }
 
   const fallbackSlugs = [
-    { slug: 'cs2', category: 'CS2' },
+    { slug: 'counter-strike', category: 'CS2' },
     { slug: 'counter-strike-2', category: 'CS2' },
+    { slug: 'cs2', category: 'CS2' },
+    { slug: 'cs-2', category: 'CS2' },
     { slug: 'dota-2', category: 'Dota 2' },
+    { slug: 'dota', category: 'Dota 2' },
     { slug: 'valorant', category: 'Valorant' },
-    { slug: 'league-of-legends', category: 'LoL' }
+    { slug: 'league-of-legends', category: 'LoL' },
+    { slug: 'lol', category: 'LoL' },
+    { slug: 'esports', category: null }
   ];
 
   const rawEventsMap = new Map();
@@ -135,7 +141,7 @@ async function fetchPolymarketEsports() {
     } catch (err) {
       console.warn(`Gamma tag_id=${tagId} warn:`, err.message);
     }
-    await sleep(150);
+    await sleep(120);
   }
 
   for (const fb of fallbackSlugs) {
@@ -149,10 +155,11 @@ async function fetchPolymarketEsports() {
     } catch (err) {
       console.warn(`Gamma tag_slug=${fb.slug} warn:`, err.message);
     }
-    await sleep(150);
+    await sleep(120);
   }
 
   const results = [];
+  const counts = { CS2: 0, 'Dota 2': 0, Valorant: 0, LoL: 0 };
   const nowMs = Date.now();
 
   for (const [evId, { ev, hintCategory }] of rawEventsMap.entries()) {
@@ -160,18 +167,26 @@ async function fetchPolymarketEsports() {
 
     const title = String(ev.title || '').trim();
     const tagsText = (ev.tags || []).map((t) => `${t.label || ''} ${t.slug || ''}`).join(' ');
-    const category = detectEsportsCategory(`${title} ${ev.slug || ''} ${tagsText}`) || hintCategory;
+    const seriesText = (ev.series || []).map((s) => `${s.title || ''} ${s.slug || ''}`).join(' ');
+    const category = detectEsportsCategory(`${title} ${ev.slug || ''} ${tagsText} ${seriesText}`) || hintCategory;
     if (!category) continue;
 
     const parsed = parseMatchTitle(title);
     if (!parsed) continue;
 
     const markets = Array.isArray(ev.markets) ? ev.markets : [];
+
+    // Ищем главный рынок победителя матча (Match Winner), исключая отдельные карты и тоталы
     let mainMarket = markets.find((m) => {
       if (m.closed) return false;
       const outcomes = parseJsonArray(m.outcomes);
       const prices = parseJsonArray(m.outcomePrices);
-      return outcomes.length === 2 && prices.length === 2 && !/map|handicap|total|over|under|kill/i.test(m.question || '');
+      const q = String(m.question || '');
+      return (
+        outcomes.length === 2 &&
+        prices.length === 2 &&
+        !/map\s*\d|game\s*\d|handicap|spread|total|over|under|kill|round|pistol/i.test(q)
+      );
     });
 
     if (!mainMarket) {
@@ -185,14 +200,14 @@ async function fetchPolymarketEsports() {
 
     if (!mainMarket) continue;
 
-    // Реальное время старта матча (gameStartTime), а не дата создания рынка
-    const rawStart = mainMarket.gameStartTime || ev.gameStartTime || ev.eventDate || ev.startTime;
+    // Реальное время начала матча (gameStartTime), а не дата создания рынка
+    const rawStart = mainMarket.gameStartTime || ev.gameStartTime || ev.eventDate || ev.startTime || ev.endDate;
     if (!rawStart) continue;
     const startMs = new Date(rawStart).getTime();
     if (!Number.isFinite(startMs)) continue;
 
-    // Отсекаем все матчи, начавшиеся больше 3.5 часов назад (уже закончились)
-    if (startMs < nowMs - 3.5 * 3600 * 1000) continue;
+    // Отсекаем все матчи, начавшиеся больше 4 часов назад (уже закончились)
+    if (startMs < nowMs - 4 * 3600 * 1000) continue;
 
     const outcomesArr = parseJsonArray(mainMarket.outcomes);
     const pricesArr = parseJsonArray(mainMarket.outcomePrices);
@@ -211,13 +226,15 @@ async function fetchPolymarketEsports() {
 
     if (!p1 || !p2) continue;
 
-    // Отсекаем пустые/зависшие рынки без ликвидности (ровно 2.00 / 2.00)
+    // Отсекаем мёртвые рынки без ставок (ровно 0.50 / 0.50 -> 1.86 / 1.86 при нулевом объёме)
     const vol = Number(mainMarket.volumeNum ?? mainMarket.volume ?? ev.volume ?? 0);
-    if (p1 === 2 && p2 === 2 && vol < 10) continue;
+    if (p1 === 1.86 && p2 === 1.86 && vol < 5) continue;
 
     const tournament = parsed.extractedTournament || ev.series?.[0]?.title || `${category} Pro Match`;
     const formatMatch = `${title} ${mainMarket.question || ''}`.match(/\bBO[1235]\b/i);
     const format = formatMatch ? formatMatch[0].toUpperCase() : 'BO3';
+
+    counts[category] = (counts[category] || 0) + 1;
 
     results.push({
       id: `pm_${category.toLowerCase().replace(/\s+/g, '')}_${evId}`,
@@ -236,7 +253,7 @@ async function fetchPolymarketEsports() {
     });
   }
 
-  console.log(`Polymarket Esports: synced ${results.length} fresh matches (CS2/Dota2/Val/LoL).`);
+  console.log(`Polymarket Esports: synced ${results.length} matches -> CS2: ${counts.CS2}, Dota 2: ${counts['Dota 2']}, Valorant: ${counts.Valorant}, LoL: ${counts.LoL}`);
   return results;
 }
 
@@ -400,7 +417,7 @@ async function fetchSharpClassicSports() {
     if (!g.p1 || !g.p2) continue;
 
     const startMs = g.start_time ? new Date(g.start_time).getTime() : nowMs + 7200000;
-    if (Number.isFinite(startMs) && startMs < nowMs - 3.5 * 3600 * 1000) continue;
+    if (Number.isFinite(startMs) && startMs < nowMs - 4 * 3600 * 1000) continue;
 
     const tournament = formatLeagueName(g.league || g.sport || 'Турнир');
     const category = mapClassicCategory(g.sport, g.league);
