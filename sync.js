@@ -66,7 +66,11 @@ function priceToOdd(priceRaw) {
 
 function detectEsportsCategory(raw = '') {
   const s = String(raw).toLowerCase();
-  if (s.includes('counter-strike') || s.includes('counter strike') || /\bcs2\b|\bcsgo\b|\bcs-2\b/.test(s)) return 'CS2';
+  if (
+    s.includes('counter-strike') ||
+    s.includes('counter strike') ||
+    /\bcs2\b|\bcsgo\b|\bcs-2\b|\bpgl\b|\biem\b|\bblast\b|\besl\b|\bcct\b/.test(s)
+  ) return 'CS2';
   if (s.includes('dota')) return 'Dota 2';
   if (s.includes('valorant')) return 'Valorant';
   if (s.includes('league of legends') || s.includes('league-of-legends') || /\blol\b/.test(s)) return 'LoL';
@@ -124,6 +128,7 @@ function pickPolymarketMainMarket(ev) {
 async function fetchPolymarketEsports() {
   const tagQueries = new Map();
 
+  // Получаем актуальные ID тегов прямо из /sports Polymarket
   try {
     const sports = await fetchGamma('/sports');
     for (const sp of extractArray(sports)) {
@@ -155,21 +160,22 @@ async function fetchPolymarketEsports() {
 
   const rawEventsMap = new Map();
 
+  // Забираем без жёсткого active=true, чтобы цеплять и свежие прематч-рынки
   for (const [tagId, cat] of tagQueries.entries()) {
     try {
-      const list = await fetchGamma(`/events?tag_id=${tagId}&active=true&closed=false&limit=100`);
+      const list = await fetchGamma(`/events?tag_id=${tagId}&closed=false&limit=150`);
       for (const ev of extractArray(list)) {
         rawEventsMap.set(String(ev.id), { ev, hintCategory: cat });
       }
     } catch (err) {
       console.warn(`Gamma tag_id=${tagId} warn:`, err.message);
     }
-    await sleep(120);
+    await sleep(100);
   }
 
   for (const fb of fallbackSlugs) {
     try {
-      const list = await fetchGamma(`/events?tag_slug=${fb.slug}&active=true&closed=false&limit=100`);
+      const list = await fetchGamma(`/events?tag_slug=${fb.slug}&closed=false&limit=150`);
       for (const ev of extractArray(list)) {
         if (!rawEventsMap.has(String(ev.id))) {
           rawEventsMap.set(String(ev.id), { ev, hintCategory: fb.category });
@@ -178,7 +184,19 @@ async function fetchPolymarketEsports() {
     } catch (err) {
       console.warn(`Gamma tag_slug=${fb.slug} warn:`, err.message);
     }
-    await sleep(120);
+    await sleep(100);
+  }
+
+  // Страховочный запрос по всем свежим открытым событиям (ловит CS2, даже если тег сменился)
+  try {
+    const recentOpen = await fetchGamma('/events?closed=false&order=id&ascending=false&limit=250');
+    for (const ev of extractArray(recentOpen)) {
+      if (!rawEventsMap.has(String(ev.id))) {
+        rawEventsMap.set(String(ev.id), { ev, hintCategory: null });
+      }
+    }
+  } catch (err) {
+    console.warn('Gamma recentOpen warn:', err.message);
   }
 
   const results = [];
@@ -200,12 +218,14 @@ async function fetchPolymarketEsports() {
     const mainMarket = pickPolymarketMainMarket(ev);
     if (!mainMarket || mainMarket.closed) continue;
 
+    // Берём gameStartTime; если его нет — eventDate, startTime или endDate
     const rawStart = mainMarket.gameStartTime || ev.gameStartTime || ev.eventDate || ev.startTime || ev.endDate;
     if (!rawStart) continue;
     const startMs = new Date(rawStart).getTime();
     if (!Number.isFinite(startMs)) continue;
 
-    if (startMs < nowMs - 4 * 3600 * 1000) continue;
+    // Отсекаем только давно завершившиеся матчи (старше 5 часов назад)
+    if (startMs < nowMs - 5 * 3600 * 1000) continue;
 
     const outcomesArr = parseJsonArray(mainMarket.outcomes);
     const pricesArr = parseJsonArray(mainMarket.outcomePrices);
@@ -224,8 +244,10 @@ async function fetchPolymarketEsports() {
 
     if (!p1 || !p2) continue;
 
+    // Отсекаем только полностью мёртвые рынки (0.50/0.50 -> 1.86/1.86 при нулевой ликвидности)
     const vol = Number(mainMarket.volumeNum ?? mainMarket.volume ?? ev.volume ?? 0);
-    if (p1 === 1.86 && p2 === 1.86 && vol < 5) continue;
+    const liq = Number(mainMarket.liquidityNum ?? mainMarket.liquidity ?? ev.liquidity ?? 0);
+    if (p1 === 1.86 && p2 === 1.86 && vol < 1 && liq < 1) continue;
 
     const tournament = parsed.extractedTournament || ev.series?.[0]?.title || `${category} Pro Match`;
     const formatMatch = `${title} ${mainMarket.question || ''}`.match(/\bBO[1235]\b/i);
@@ -464,7 +486,6 @@ async function settlePolymarketEvent(dbEv) {
   else if (pricesArr[1] >= 0.95 && pricesArr[0] <= 0.05) rawWinnerIdx = 1;
   else return false;
 
-  // Проверяем, не менялись ли команды местами при импорте
   const parsed = parseMatchTitle(dbEv.title);
   let winnerIdx = rawWinnerIdx;
   if (parsed) {
@@ -531,7 +552,6 @@ function parseSharpScoreWinner(dbEv, scoreObj) {
 
   if (homeScore > awayScore) return { winnerIndex: 0, score: scoreStr };
   if (awayScore > homeScore) return { winnerIndex: outcomesCount === 3 ? 2 : 1, score: scoreStr };
-  // Ничья: если в линии есть исход Х (3 исхода), побеждает индекс 1; иначе возврат (-1)
   return { winnerIndex: outcomesCount === 3 ? 1 : -1, score: scoreStr };
 }
 
@@ -550,7 +570,6 @@ async function autoSettleFinishedEvents() {
 
   let settledCount = 0;
 
-  // 1. Закрываем завершённые матчи Polymarket
   for (const ev of pmEvents) {
     try {
       const ok = await settlePolymarketEvent(ev);
@@ -561,7 +580,6 @@ async function autoSettleFinishedEvents() {
     await sleep(120);
   }
 
-  // 2. Закрываем завершённые матчи SharpAPI
   if (SHARPAPI_KEY && sharpEvents.length > 0) {
     const scoresMap = new Map();
     try {
@@ -613,10 +631,8 @@ async function autoSettleFinishedEvents() {
 
 (async function main() {
   try {
-    // Сначала рассчитываем уже завершившиеся матчи
     await autoSettleFinishedEvents();
 
-    // Затем подтягиваем свежие коэффициенты и новые матчи
     const esportsMatches = await fetchPolymarketEsports();
     const classicMatches = await fetchSharpClassicSports();
 
