@@ -63,11 +63,10 @@ function priceToOdd(priceRaw) {
   return odd >= 1.03 && odd <= 35 ? odd : null;
 }
 
-// Строгое определение дисциплины без ложных срабатываний на общие турниры (PGL / ESL)
+// Строгое определение игры (Dota 2 проверяется первой, чтобы не путалась с CS2)
 function detectEsportsCategory(raw = '') {
   const s = String(raw).toLowerCase();
 
-  // 1. Dota 2 (проверяем первой, так как PGL Wallachia / ESL One бывают и в Доте)
   if (
     s.includes('dota') ||
     s.includes('wallachia') ||
@@ -78,17 +77,14 @@ function detectEsportsCategory(raw = '') {
     s.includes('betboom dacha')
   ) return 'Dota 2';
 
-  // 2. Valorant
   if (s.includes('valorant') || /\bvct\b|\bvalorant champions\b/.test(s)) return 'Valorant';
 
-  // 3. League of Legends
   if (
     s.includes('league of legends') ||
     s.includes('league-of-legends') ||
     /\blol\b|\blck\b|\blpl\b|\blec\b|\blcs\b|\bmsi\b/.test(s)
   ) return 'LoL';
 
-  // 4. Counter-Strike 2
   if (
     s.includes('counter-strike') ||
     s.includes('counter strike') ||
@@ -102,10 +98,8 @@ function parseMatchTitle(title = '') {
   let raw = String(title).trim();
   let extractedTournament = '';
 
-  // Убираем префикс игры: "Counter-Strike:", "Dota 2:", "CS2 -"
   raw = raw.replace(/^(?:Counter-Strike(?:\s*2)?|CS2|CS:GO|Dota\s*2|Valorant|LoL)\s*[:\-—]\s*/i, '').trim();
 
-  // Формат "Турнир: Команда 1 vs Команда 2"
   const colonIdx = raw.indexOf(':');
   if (colonIdx !== -1) {
     const left = raw.slice(0, colonIdx).trim();
@@ -116,7 +110,6 @@ function parseMatchTitle(title = '') {
     }
   }
 
-  // Отделяем хвост турнира (в том числе слипшийся дефис вида "FlyQuest- PGL Major Singapore Stage 2")
   const tailSplit = raw.split(/\s*[-—|]\s+/);
   if (tailSplit.length >= 2 && /\b(?:vs\.?|v\.?)\b/i.test(tailSplit[0])) {
     raw = tailSplit[0].trim();
@@ -168,10 +161,30 @@ function pickPolymarketMainMarket(ev) {
 }
 
 async function fetchPolymarketEsports() {
+  const tagQueries = new Map();
+
+  // 1. Получаем актуальные tag_id из /sports (именно через них отдаются матчи Major)
+  try {
+    const sports = await fetchGamma('/sports');
+    for (const sp of extractArray(sports)) {
+      const label = `${sp.sport || ''} ${sp.label || ''} ${sp.slug || ''}`;
+      const cat = detectEsportsCategory(label);
+      if (cat && sp.tags) {
+        const tagList = String(sp.tags).split(',').map((t) => t.trim()).filter(Boolean);
+        for (const t of tagList) {
+          if (/^\d+$/.test(t)) tagQueries.set(t, cat);
+        }
+      }
+    }
+  } catch (err) {
+    console.warn('Gamma /sports warn:', err.message);
+  }
+
   const disciplineFeeds = [
     { url: '/events?tag_slug=counter-strike-2&closed=false&limit=300', cat: 'CS2' },
     { url: '/events?tag_slug=counter-strike&closed=false&limit=300', cat: 'CS2' },
     { url: '/events?tag_slug=cs2&closed=false&limit=300', cat: 'CS2' },
+    { url: '/events?tag_slug=esports&closed=false&order=volume&ascending=false&limit=300', cat: null },
     { url: '/events?tag_slug=dota-2&closed=false&limit=250', cat: 'Dota 2' },
     { url: '/events?tag_slug=dota&closed=false&limit=250', cat: 'Dota 2' },
     { url: '/events?tag_slug=valorant&closed=false&limit=200', cat: 'Valorant' },
@@ -179,6 +192,18 @@ async function fetchPolymarketEsports() {
   ];
 
   const rawEventsMap = new Map();
+
+  for (const [tagId, cat] of tagQueries.entries()) {
+    try {
+      const list = await fetchGamma(`/events?tag_id=${tagId}&closed=false&limit=300`);
+      for (const ev of extractArray(list)) {
+        rawEventsMap.set(String(ev.id), { ev, feedCategory: cat });
+      }
+    } catch (err) {
+      console.warn(`Gamma tag_id=${tagId} warn:`, err.message);
+    }
+    await sleep(100);
+  }
 
   for (const feed of disciplineFeeds) {
     try {
@@ -360,7 +385,6 @@ function parseTeams(eventName = '') {
 }
 
 function getDecimalOdd(item) {
-  // Берём consensus_odds в первую очередь, чтобы отсечь ошибочные выбросы (вроде 20.00) у отдельных БК
   const raw =
     item?.consensus_odds?.decimal ??
     item?.best_odds?.decimal ??
@@ -403,7 +427,6 @@ async function fetchSharpClassicSports() {
     const market = String(item.market_type ?? '').toLowerCase();
     const period = String(item.period ?? item.timeframe ?? 'full_time').toLowerCase();
 
-    // Пропускаем форы, тоталы и рынки на отдельные таймы/периоды
     if (
       market.includes('spread') ||
       market.includes('handicap') ||
@@ -449,7 +472,6 @@ async function fetchSharpClassicSports() {
     const t1 = entry.team1.toLowerCase();
     const t2 = entry.team2.toLowerCase();
 
-    // Сначала точное совпадение, чтобы "Genk II" и "Anderlecht II" не путались
     if (sel === t1 || sel === 'home' || sel === '1') {
       entry.p1 = odd;
     } else if (sel === t2 || sel === 'away' || sel === '2') {
@@ -472,7 +494,6 @@ async function fetchSharpClassicSports() {
     const tournament = formatLeagueName(g.league || g.sport || 'Турнир');
     const category = mapClassicCategory(g.sport, g.league);
 
-    // В футболе в основной линии 1X2 обязательно должна быть ничья
     if (category === 'Футбол' && !g.draw) continue;
 
     const startMs = g.start_time ? new Date(g.start_time).getTime() : nowMs + 7200000;
@@ -666,7 +687,7 @@ async function autoSettleFinishedEvents() {
   }
 }
 
-async function cleanupStaleOpenEvents(activeIdsSet) {
+async function cleanupStaleOpenEvents(activeIdsSet, hasPmData, hasSharpData) {
   const { data: openRows } = await sb
     .from('events')
     .select('id, start_time')
@@ -679,11 +700,17 @@ async function cleanupStaleOpenEvents(activeIdsSet) {
 
   for (const row of openRows) {
     const id = String(row.id || '');
-    if (!id.startsWith('pm_') && !id.startsWith('ext_')) continue;
+    const isPm = id.startsWith('pm_');
+    const isSharp = id.startsWith('ext_');
+    if (!isPm && !isSharp) continue;
+
+    // Не удаляем матчи источника, если его фид временно вернул 0 записей
+    if (isPm && !hasPmData) continue;
+    if (isSharp && !hasSharpData) continue;
 
     const startMs = new Date(row.start_time).getTime();
     const isTooOld = Number.isFinite(startMs) && startMs < nowMs - 12 * 3600 * 1000;
-    const isGoneFromFeed = activeIdsSet.size > 0 && !activeIdsSet.has(id) && (!Number.isFinite(startMs) || startMs > nowMs);
+    const isGoneFromFeed = !activeIdsSet.has(id) && (!Number.isFinite(startMs) || startMs > nowMs);
 
     if (isTooOld || isGoneFromFeed) {
       toDelete.push(id);
@@ -706,7 +733,7 @@ async function cleanupStaleOpenEvents(activeIdsSet) {
     const combined = [...esportsMatches, ...classicMatches].slice(0, 180);
     const activeIds = new Set(combined.map((m) => m.id));
 
-    await cleanupStaleOpenEvents(activeIds);
+    await cleanupStaleOpenEvents(activeIds, esportsMatches.length > 0, classicMatches.length > 0);
 
     if (combined.length === 0) {
       console.log('No matches to sync.');
