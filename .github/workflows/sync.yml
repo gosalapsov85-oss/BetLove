@@ -2,7 +2,7 @@ name: Sync BetLove Line and Results
 
 on:
   schedule:
-    - cron: '*/15 * * * *'
+    - cron: '*/5 * * * *'
   workflow_dispatch:
 
 jobs:
@@ -22,7 +22,7 @@ jobs:
 
       - name: Run sync script
         env:
-          ODDSPAPI_KEY: ${{ secrets.ODDSPAPI_KEY }}
+          SHARPAPI_KEY: ${{ secrets.SHARPAPI_KEY }}
           SUPABASE_URL: https://gwluwyobukouxylviskn.supabase.co
           SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
         run: node sync.js
