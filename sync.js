@@ -194,5 +194,3 @@ async function settleFinishedFixtures() {
     process.exit(1);
   }
 })();
-  }
-})();
