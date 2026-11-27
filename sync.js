@@ -15,14 +15,14 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 async function tryFetch(url) {
   const res = await fetch(url, {
     headers: {
+      'X-API-Key': SHARPAPI_KEY,
       Authorization: `Bearer ${SHARPAPI_KEY}`,
-      'x-api-key': SHARPAPI_KEY,
       Accept: 'application/json'
     }
   });
   const text = await res.text();
   if (!res.ok) {
-    throw new Error(`HTTP ${res.status}: ${text.slice(0, 150)}`);
+    throw new Error(`HTTP ${res.status}: ${text.slice(0, 200)}`);
   }
   return JSON.parse(text);
 }
@@ -50,6 +50,15 @@ function inferFormat(category = '', tournamentName = '') {
   return 'Матч';
 }
 
+function toDecimalOdd(val) {
+  const n = Number(val);
+  if (!Number.isFinite(n)) return null;
+  if (n > 1.01 && n < 50) return Number(n.toFixed(2));
+  if (n >= 100) return Number((1 + n / 100).toFixed(2));
+  if (n <= -100) return Number((1 + 100 / Math.abs(n)).toFixed(2));
+  return null;
+}
+
 function extractOutcomesFromEvent(ev) {
   const prices = [];
   const walk = (node) => {
@@ -58,10 +67,10 @@ function extractOutcomesFromEvent(ev) {
       for (const item of node) walk(item);
       return;
     }
-    const rawPrice = node.price ?? node.odds ?? node.decimal;
-    if (typeof rawPrice === 'number' && Number.isFinite(rawPrice) && rawPrice > 1) {
-      if (node.active !== false) {
-        prices.push(Number(rawPrice.toFixed(2)));
+    for (const key of ['price', 'odds', 'decimal', 'decimal_odds', 'american_odds']) {
+      if (node[key] !== undefined && node.active !== false) {
+        const odd = toDecimalOdd(node[key]);
+        if (odd) prices.push(odd);
       }
     }
     for (const v of Object.values(node)) {
@@ -82,13 +91,9 @@ function extractOutcomesFromEvent(ev) {
 async function syncUpcomingFixtures() {
   const base = 'https://api.sharpapi.io/api/v1';
   const candidateUrls = [
-    `${base}/odds`,
-    `${base}/events`,
-    `${base}/fixtures`,
-    `${base}/games`,
-    `${base}/matches`,
-    `${base}/sports`,
-    `${base}/bookmakers`
+    `${base}/odds/snapshot?limit=25`,
+    `${base}/odds/best?limit=25`,
+    `${base}/events?limit=25`
   ];
 
   let rawData = null;
@@ -110,7 +115,7 @@ async function syncUpcomingFixtures() {
     throw new Error('None of the candidate SharpAPI endpoints responded with 200 OK.');
   }
 
-  console.log('Sample response:', JSON.stringify(rawData).slice(0, 600));
+  console.log('Sample response:', JSON.stringify(rawData).slice(0, 800));
 
   const list = Array.isArray(rawData)
     ? rawData
@@ -118,7 +123,9 @@ async function syncUpcomingFixtures() {
       ? rawData.data
       : Array.isArray(rawData.events)
         ? rawData.events
-        : [];
+        : Array.isArray(rawData.items)
+          ? rawData.items
+          : [];
 
   if (list.length === 0) {
     console.log('Response did not contain an event array directly.');
@@ -130,13 +137,13 @@ async function syncUpcomingFixtures() {
     const outcomes = extractOutcomesFromEvent(ev);
     if (!outcomes) continue;
 
-    const extId = String(ev.id ?? ev.eventId ?? ev.gameId ?? '');
+    const extId = String(ev.id ?? ev.event_id ?? ev.game_id ?? '');
     if (!extId) continue;
 
-    const p1 = ev.homeTeam || ev.home_team || ev.team1 || ev.participant1 || 'Команда 1';
-    const p2 = ev.awayTeam || ev.away_team || ev.team2 || ev.participant2 || 'Команда 2';
-    const sportName = ev.sport || ev.sportName || ev.sport_title || '';
-    const tournament = ev.league || ev.tournament || ev.leagueName || sportName || 'Турнир';
+    const p1 = ev.home_team || ev.home_name || ev.team_1 || ev.participant_1 || 'Команда 1';
+    const p2 = ev.away_team || ev.away_name || ev.team_2 || ev.participant_2 || 'Команда 2';
+    const sportName = ev.sport || ev.sport_name || ev.sport_key || '';
+    const tournament = ev.league || ev.league_name || ev.tournament || sportName || 'Турнир';
     const category = mapCategory(sportName, tournament);
 
     payload.push({
@@ -146,7 +153,7 @@ async function syncUpcomingFixtures() {
       category,
       tournament,
       format: inferFormat(category, tournament),
-      start_time: ev.startTime || ev.commence_time || ev.start_time || new Date(Date.now() + 3600000).toISOString(),
+      start_time: ev.start_time || ev.commence_time || ev.starts_at || new Date(Date.now() + 3600000).toISOString(),
       status: 'prematch',
       outcomes,
       extra_markets: []
