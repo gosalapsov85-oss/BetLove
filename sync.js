@@ -1,7 +1,6 @@
 const { createClient } = require('@supabase/supabase-js');
 
 const SHARPAPI_KEY = process.env.SHARPAPI_KEY;
-const PANDASCORE_KEY = process.env.PANDASCORE_KEY;
 const SUPABASE_URL = process.env.SUPABASE_URL || 'https://gwluwyobukouxylviskn.supabase.co';
 const SUPABASE_SERVICE_KEY = process.env.SUPABASE_SERVICE_KEY;
 
@@ -26,15 +25,15 @@ async function fetchSharp(path) {
   return JSON.parse(text);
 }
 
-async function fetchPanda(path) {
-  const res = await fetch(`https://api.pandascore.co${path}`, {
+async function fetchGamma(path) {
+  const res = await fetch(`https://gamma-api.polymarket.com${path}`, {
     headers: {
-      Authorization: `Bearer ${PANDASCORE_KEY}`,
-      Accept: 'application/json'
+      Accept: 'application/json',
+      'User-Agent': 'BetLove-Sync/1.0'
     }
   });
   const text = await res.text();
-  if (!res.ok) throw new Error(`PandaScore HTTP ${res.status} on ${path}: ${text.slice(0, 150)}`);
+  if (!res.ok) throw new Error(`Gamma API HTTP ${res.status} on ${path}: ${text.slice(0, 150)}`);
   return JSON.parse(text);
 }
 
@@ -42,6 +41,181 @@ function extractArray(raw) {
   if (Array.isArray(raw)) return raw;
   if (!raw || typeof raw !== 'object') return [];
   return raw.data || raw.events || raw.odds || raw.items || [];
+}
+
+function parseJsonArray(val) {
+  if (Array.isArray(val)) return val;
+  if (typeof val === 'string') {
+    try {
+      const parsed = JSON.parse(val);
+      return Array.isArray(parsed) ? parsed : [];
+    } catch {
+      return [];
+    }
+  }
+  return [];
+}
+
+function priceToOdd(priceRaw) {
+  const p = Number(priceRaw);
+  if (!Number.isFinite(p) || p <= 0.01 || p >= 0.99) return null;
+  const odd = Number((1 / p).toFixed(2));
+  return odd >= 1.02 && odd <= 50 ? odd : null;
+}
+
+function detectEsportsCategory(raw = '') {
+  const s = String(raw).toLowerCase();
+  if (s.includes('counter-strike') || s.includes('counter strike') || /\bcs2\b|\bcsgo\b/.test(s)) return 'CS2';
+  if (s.includes('dota')) return 'Dota 2';
+  if (s.includes('valorant')) return 'Valorant';
+  if (s.includes('league of legends') || s.includes('league-of-legends') || /\blol\b/.test(s)) return 'LoL';
+  return null;
+}
+
+function parseMatchTitle(title = '') {
+  const clean = String(title)
+    .replace(/^.*?(?:CS2|Dota 2|Valorant|LoL|Counter-Strike)\s*:\s*/i, '')
+    .replace(/\s*\((?:BO\d|Best of \d)\)\s*/gi, '')
+    .trim();
+
+  const parts = clean.split(/\s+(?:vs\.?|v\.?|—|-)\s+/i);
+  if (parts.length === 2 && parts[0].trim() && parts[1].trim()) {
+    return { team1: parts[0].trim(), team2: parts[1].trim() };
+  }
+  return null;
+}
+
+// 1. Polymarket Gamma API: живые рыночные коэффициенты для CS2, Dota 2, Valorant и LoL (без ключа)
+async function fetchPolymarketEsports() {
+  const tagQueries = new Map(); // tagId -> category
+
+  try {
+    const sports = await fetchGamma('/sports');
+    for (const sp of extractArray(sports)) {
+      const label = `${sp.sport || ''} ${sp.label || ''} ${sp.slug || ''}`;
+      const cat = detectEsportsCategory(label);
+      if (cat && sp.tags) {
+        const tagList = String(sp.tags).split(',').map((t) => t.trim()).filter(Boolean);
+        for (const t of tagList) {
+          if (/^\d+$/.test(t)) tagQueries.set(t, cat);
+        }
+      }
+    }
+  } catch (err) {
+    console.warn('Gamma /sports warn:', err.message);
+  }
+
+  // Резервные слаги на случай, если /sports не отдал теги
+  const fallbackSlugs = [
+    { slug: 'cs2', category: 'CS2' },
+    { slug: 'counter-strike-2', category: 'CS2' },
+    { slug: 'dota-2', category: 'Dota 2' },
+    { slug: 'valorant', category: 'Valorant' },
+    { slug: 'league-of-legends', category: 'LoL' }
+  ];
+
+  const rawEventsMap = new Map();
+
+  for (const [tagId, cat] of tagQueries.entries()) {
+    try {
+      const list = await fetchGamma(`/events?tag_id=${tagId}&active=true&closed=false&limit=100`);
+      for (const ev of extractArray(list)) {
+        rawEventsMap.set(String(ev.id), { ev, hintCategory: cat });
+      }
+    } catch (err) {
+      console.warn(`Gamma tag_id=${tagId} warn:`, err.message);
+    }
+    await sleep(150);
+  }
+
+  for (const fb of fallbackSlugs) {
+    try {
+      const list = await fetchGamma(`/events?tag_slug=${fb.slug}&active=true&closed=false&limit=100`);
+      for (const ev of extractArray(list)) {
+        if (!rawEventsMap.has(String(ev.id))) {
+          rawEventsMap.set(String(ev.id), { ev, hintCategory: fb.category });
+        }
+      }
+    } catch (err) {
+      console.warn(`Gamma tag_slug=${fb.slug} warn:`, err.message);
+    }
+    await sleep(150);
+  }
+
+  const results = [];
+
+  for (const [evId, { ev, hintCategory }] of rawEventsMap.entries()) {
+    const title = String(ev.title || '').trim();
+    const tagsText = (ev.tags || []).map((t) => `${t.label || ''} ${t.slug || ''}`).join(' ');
+    const category = detectEsportsCategory(`${title} ${ev.slug || ''} ${tagsText}`) || hintCategory;
+    if (!category) continue;
+
+    // Отсекаем долгосрочные аутрайты ("Who will win the Major?"), берём только матчи X vs Y
+    const teams = parseMatchTitle(title);
+    if (!teams) continue;
+
+    const markets = Array.isArray(ev.markets) ? ev.markets : [];
+    // Ищем главный рынок победителя матча (где 2 исхода: команда 1 и команда 2)
+    let mainMarket = markets.find((m) => {
+      if (m.closed) return false;
+      const outcomes = parseJsonArray(m.outcomes);
+      const prices = parseJsonArray(m.outcomePrices);
+      return outcomes.length === 2 && prices.length === 2 && !/map|handicap|total|over|under|kill/i.test(m.question || '');
+    });
+
+    if (!mainMarket) {
+      mainMarket = markets.find((m) => {
+        if (m.closed) return false;
+        const outcomes = parseJsonArray(m.outcomes);
+        const prices = parseJsonArray(m.outcomePrices);
+        return outcomes.length === 2 && prices.length === 2;
+      });
+    }
+
+    if (!mainMarket) continue;
+
+    const outcomesArr = parseJsonArray(mainMarket.outcomes);
+    const pricesArr = parseJsonArray(mainMarket.outcomePrices);
+
+    let p1 = priceToOdd(pricesArr[0]);
+    let p2 = priceToOdd(pricesArr[1]);
+
+    // Сверяем порядок исходов с названиями команд в заголовке
+    const out0 = String(outcomesArr[0] || '').toLowerCase();
+    const out1 = String(outcomesArr[1] || '').toLowerCase();
+    const t1Low = teams.team1.toLowerCase();
+    const t2Low = teams.team2.toLowerCase();
+
+    if ((out0.includes(t2Low) || t2Low.includes(out0)) && (out1.includes(t1Low) || t1Low.includes(out1))) {
+      [p1, p2] = [p2, p1];
+    }
+
+    if (!p1 || !p2) continue;
+
+    const startTime = ev.startTime || ev.endDate || new Date(Date.now() + 7200000).toISOString();
+    const seriesTitle = ev.series?.[0]?.title || ev.ticker || `${category} Pro Match`;
+    const formatMatch = `${title} ${mainMarket.question || ''}`.match(/\bBO[1235]\b/i);
+    const format = formatMatch ? formatMatch[0].toUpperCase() : 'BO3';
+
+    results.push({
+      id: `pm_${category.toLowerCase().replace(/\s+/g, '')}_${evId}`,
+      external_id: `pm_${evId}`,
+      title: `${teams.team1} vs ${teams.team2}`,
+      category,
+      tournament: String(seriesTitle).trim(),
+      format,
+      start_time: startTime,
+      status: 'prematch',
+      outcomes: [
+        { name: 'П1', odd: p1 },
+        { name: 'П2', odd: p2 }
+      ],
+      extra_markets: []
+    });
+  }
+
+  console.log(`Polymarket Esports: synced ${results.length} real matches (CS2/Dota2/Val/LoL).`);
+  return results;
 }
 
 function formatLeagueName(raw = '') {
@@ -52,7 +226,6 @@ function formatLeagueName(raw = '') {
     .trim();
 }
 
-// Отсекаем из SharpAPI весь киберспорт и виртуальные симуляторы
 function isExcludedFromSharp(sportName = '', leagueName = '', eventName = '') {
   const s = `${sportName} ${leagueName} ${eventName}`.toLowerCase();
   return (
@@ -125,82 +298,7 @@ function getDecimalOdd(item) {
   return null;
 }
 
-function computeEsportsOdds(matchId, team1Id, team2Id, numberOfGames = 3) {
-  const seed = Math.abs((Number(matchId) * 2654435761 + Number(team1Id || 1) * 31 - Number(team2Id || 2) * 17) % 1000);
-  const spread = numberOfGames === 1 ? 0.16 : 0.22;
-  const p1Prob = 0.5 - spread + (seed / 1000) * (spread * 2);
-  const p2Prob = 1 - p1Prob;
-  const margin = 1.06;
-
-  const p1 = Math.max(1.18, Math.min(4.8, Number((margin / p1Prob).toFixed(2))));
-  const p2 = Math.max(1.18, Math.min(4.8, Number((margin / p2Prob).toFixed(2))));
-  return { p1, p2 };
-}
-
-// 1. PandaScore: ТОЛЬКО CS2, Dota 2, Valorant и League of Legends
-async function fetchPandaEsports() {
-  if (!PANDASCORE_KEY) {
-    console.warn('PANDASCORE_KEY is missing, skipping esports.');
-    return [];
-  }
-
-  const endpoints = [
-    { path: '/csgo/matches/upcoming?sort=begin_at&per_page=30', category: 'CS2', prefix: 'cs2' },
-    { path: '/dota2/matches/upcoming?sort=begin_at&per_page=25', category: 'Dota 2', prefix: 'dota2' },
-    { path: '/valorant/matches/upcoming?sort=begin_at&per_page=20', category: 'Valorant', prefix: 'val' },
-    { path: '/lol/matches/upcoming?sort=begin_at&per_page=20', category: 'LoL', prefix: 'lol' }
-  ];
-
-  const results = [];
-
-  for (const ep of endpoints) {
-    try {
-      const list = await fetchPanda(ep.path);
-      console.log(`PandaScore ${ep.category}: fetched ${list.length} upcoming matches.`);
-
-      for (const m of list) {
-        const opp1 = m.opponents?.[0]?.opponent;
-        const opp2 = m.opponents?.[1]?.opponent;
-        if (!opp1?.name || !opp2?.name) continue;
-        if (opp1.name.toUpperCase() === 'TBD' || opp2.name.toUpperCase() === 'TBD') continue;
-
-        const startTime = m.begin_at || m.scheduled_at;
-        if (!startTime) continue;
-
-        const leagueName = m.league?.name || '';
-        const serieName = m.serie?.full_name || m.serie?.name || '';
-        const tournament = [leagueName, serieName].filter(Boolean).join(' — ') || `${ep.category} Tournament`;
-
-        const gamesCount = Number(m.number_of_games) || 3;
-        const format = gamesCount === 1 ? 'BO1' : gamesCount === 5 ? 'BO5' : gamesCount === 2 ? 'BO2' : 'BO3';
-        const { p1, p2 } = computeEsportsOdds(m.id, opp1.id, opp2.id, gamesCount);
-
-        results.push({
-          id: `ps_${ep.prefix}_${m.id}`,
-          external_id: `ps_${m.id}`,
-          title: `${opp1.name} vs ${opp2.name}`,
-          category: ep.category,
-          tournament,
-          format,
-          start_time: startTime,
-          status: 'prematch',
-          outcomes: [
-            { name: 'П1', odd: p1 },
-            { name: 'П2', odd: p2 }
-          ],
-          extra_markets: []
-        });
-      }
-    } catch (err) {
-      console.warn(`PandaScore ${ep.category} error: ${err.message}`);
-    }
-    await sleep(250);
-  }
-
-  return results;
-}
-
-// 2. SharpAPI: ТОЛЬКО обычный спорт (футбол, баскетбол, хоккей, теннис и др., без киберспорта)
+// 2. SharpAPI: реальный классический спорт
 async function fetchSharpClassicSports() {
   if (!SHARPAPI_KEY) return [];
 
@@ -297,15 +395,16 @@ async function fetchSharpClassicSports() {
     });
   }
 
+  console.log(`SharpAPI Classic Sports: synced ${results.length} real matches.`);
   return results;
 }
 
 (async function main() {
   try {
-    const esportsMatches = await fetchPandaEsports();
+    const esportsMatches = await fetchPolymarketEsports();
     const classicMatches = await fetchSharpClassicSports();
 
-    const combined = [...esportsMatches, ...classicMatches].slice(0, 150);
+    const combined = [...esportsMatches, ...classicMatches].slice(0, 160);
     if (combined.length === 0) {
       console.log('No matches to sync.');
       return;
@@ -315,7 +414,7 @@ async function fetchSharpClassicSports() {
     if (error) {
       throw new Error('Supabase admin_upsert_events error: ' + error.message);
     }
-    console.log(`Synced ${combined.length} total matches (Esports [CS2/Dota2/Val/LoL]: ${esportsMatches.length}, Classic Sports: ${classicMatches.length}).`);
+    console.log(`Synced ${combined.length} total matches (Polymarket Esports: ${esportsMatches.length}, SharpAPI Sports: ${classicMatches.length}).`);
   } catch (err) {
     console.error('Sync failed:', err.message);
     process.exit(1);
