@@ -427,6 +427,141 @@
   }
   .filter-chip.active { background: var(--yellow); border-color: var(--yellow); color: #0b0c10; font-weight: 800; }
 
+  /* DAILY STREAK & CASINO WHEEL */
+  .streak-grid {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 6px;
+    margin-bottom: 12px;
+  }
+  .streak-day-box {
+    background: var(--surface-2);
+    border: 1px solid var(--border);
+    border-radius: 11px;
+    padding: 9px 4px;
+    text-align: center;
+    position: relative;
+    transition: all 0.2s ease;
+  }
+  .streak-day-box.done {
+    background: var(--green-soft);
+    border-color: rgba(0, 200, 117, 0.4);
+  }
+  .streak-day-box.ready {
+    background: linear-gradient(180deg, rgba(255, 214, 0, 0.22) 0%, rgba(255, 214, 0, 0.06) 100%);
+    border-color: var(--yellow);
+    box-shadow: 0 0 18px rgba(255, 214, 0, 0.25);
+    animation: readyPulse 1.8s infinite;
+  }
+  @keyframes readyPulse {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-2px); }
+  }
+  .streak-day-lbl { font-size: 10px; color: var(--text-dim); font-weight: 700; margin-bottom: 3px; }
+  .streak-day-val { font-size: 13px; font-weight: 900; color: #fff; }
+  .streak-day-box.done .streak-day-val { color: var(--green); }
+  .streak-day-box.ready .streak-day-val { color: var(--yellow); }
+
+  .wheel-casino-card {
+    background: radial-gradient(circle at 50% 25%, #241934 0%, #13151d 78%);
+    border: 1px solid rgba(255, 214, 0, 0.35);
+    border-radius: 18px;
+    padding: 18px 14px;
+    margin-bottom: 12px;
+    text-align: center;
+    position: relative;
+    overflow: hidden;
+  }
+  .wheel-stage {
+    position: relative;
+    width: 268px;
+    height: 268px;
+    margin: 12px auto 16px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .wheel-outer-rim {
+    position: absolute;
+    inset: 0;
+    border-radius: 50%;
+    background: conic-gradient(from 0deg, #ffd600, #ff4757, #8b5cf6, #00c875, #ffd600);
+    padding: 8px;
+    box-shadow: 0 0 36px rgba(255, 214, 0, 0.22), inset 0 0 14px rgba(0, 0, 0, 0.8);
+  }
+  .wheel-outer-rim.spinning-glow {
+    box-shadow: 0 0 52px rgba(255, 214, 0, 0.55), 0 0 24px rgba(255, 71, 87, 0.45);
+  }
+  .wheel-inner-bed {
+    width: 100%;
+    height: 100%;
+    border-radius: 50%;
+    background: #0d0f15;
+    position: relative;
+    overflow: hidden;
+  }
+  #fortuneWheelCanvas {
+    width: 100%;
+    height: 100%;
+    border-radius: 50%;
+    display: block;
+    will-change: transform;
+  }
+  .wheel-pointer {
+    position: absolute;
+    top: -11px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 0;
+    height: 0;
+    border-left: 14px solid transparent;
+    border-right: 14px solid transparent;
+    border-top: 26px solid #ffd600;
+    filter: drop-shadow(0 4px 8px rgba(0, 0, 0, 0.85));
+    z-index: 15;
+    transform-origin: 50% 4px;
+  }
+  .wheel-pointer.tick {
+    animation: pointerTick 0.11s ease-out;
+  }
+  @keyframes pointerTick {
+    0% { transform: translateX(-50%) rotate(0deg); }
+    40% { transform: translateX(-50%) rotate(-24deg); }
+    100% { transform: translateX(-50%) rotate(0deg); }
+  }
+  .wheel-hub {
+    position: absolute;
+    width: 56px;
+    height: 56px;
+    border-radius: 50%;
+    background: radial-gradient(circle at 35% 35%, #2b3042, #11131a);
+    border: 3px solid #ffd600;
+    box-shadow: 0 6px 18px rgba(0, 0, 0, 0.85);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 20px;
+    z-index: 12;
+    pointer-events: none;
+  }
+  .wheel-odds-strip {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 6px;
+    margin-bottom: 12px;
+  }
+  .w-chance-pill {
+    background: rgba(0, 0, 0, 0.35);
+    border: 1px solid var(--border);
+    border-radius: 9px;
+    padding: 6px 4px;
+    font-size: 11px;
+  }
+  .w-chance-pill.jackpot {
+    border-color: rgba(255, 214, 0, 0.45);
+    background: rgba(255, 214, 0, 0.1);
+  }
+
   /* NARDY 24/7 */
   .nardy-stage {
     background: radial-gradient(circle at 50% 35%, #1b2e2d 0%, #111618 75%);
@@ -915,11 +1050,11 @@
 <div id="betAnimOverlay" class="bet-anim-overlay" onclick="this.classList.remove('active')">
   <div class="bet-ticket-pop">
     <div class="ticket-check-ring">✓</div>
-    <div class="ticket-stamp">ПАРИ ПРИНЯТО СЕРВЕРОМ</div>
+    <div class="ticket-stamp" id="animBetBadge">ПАРИ ПРИНЯТО СЕРВЕРОМ</div>
     <div style="font-size:16px;font-weight:900;color:#fff;margin-bottom:4px;" id="animBetTitle">Ординар • 1.85x</div>
     <div style="font-size:12px;color:var(--text-dim);margin-bottom:12px;" id="animBetStake">Ставка: 100.00 BC</div>
     <div style="background:var(--surface-2);border:1px solid var(--border);border-radius:11px;padding:10px;">
-      <div style="font-size:10.5px;color:var(--text-dim);">Возможный выигрыш</div>
+      <div style="font-size:10.5px;color:var(--text-dim);" id="animBetWinSub">Возможный выигрыш</div>
       <div style="font-size:19px;font-weight:900;color:var(--yellow);" class="num" id="animBetWin">185.00 BC</div>
     </div>
   </div>
@@ -948,7 +1083,7 @@
 
   <div class="topbar-right">
     <div class="desktop-clock num" id="pcClockDisplay">Cloud Sync</div>
-    <div class="wallet-pill fb-pill" onclick="switchTab('farm')" title="Баланс фрибетов">
+    <div class="wallet-pill fb-pill" onclick="switchTab('farm')" title="Бонусы, колесо и фрибеты">
       <span class="wallet-val num" id="headerFreebets">0</span>
       <span class="wallet-curr">ФР</span>
     </div>
@@ -977,7 +1112,7 @@
         <span class="nav-pill-count num" id="sideBetsBadge">0</span>
       </button>
       <button class="side-nav-btn" data-tab="farm" onclick="switchTab('farm')">
-        <span class="side-nav-left"><span>🎟</span><span>Промокоды</span></span>
+        <span class="side-nav-left"><span>🎁</span><span>Бонусы и Промо</span></span>
       </button>
       <button class="side-nav-btn" data-tab="stats" onclick="switchTab('stats')">
         <span class="side-nav-left"><span>🏆</span><span>Топ и Профиль</span></span>
@@ -1046,6 +1181,14 @@
           <button id="mobSearchClear" class="s-clr" onclick="clearLineSearch()">✕</button>
         </div>
         <div class="filter-bar mobile-only" id="mobSportFilterBar"></div>
+
+        <!-- TOURNAMENT & MAJOR QUICK FILTER -->
+        <div id="tournamentFilterRow" style="display:flex;gap:6px;margin-bottom:10px;align-items:center;">
+          <button id="btnMajorOnly" class="filter-chip" onclick="toggleMajorOnly()" style="flex-shrink:0;">🏆 Только Major</button>
+          <select id="tournamentSelectFilter" class="select" onchange="setTournamentFilter(this.value)" style="padding:6px 10px;font-size:12px;">
+            <option value="all">Все турниры / лиги</option>
+          </select>
+        </div>
 
         <div id="eventsContainer"></div>
       </div>
@@ -1152,8 +1295,67 @@
       <div id="betsListContainer"></div>
     </div>
 
-    <!-- TAB 3: PROMOS -->
+    <!-- TAB 3: BONUSES, WHEEL & PROMOS -->
     <div id="tab-farm" class="hidden">
+
+      <!-- DAILY STREAK CARD -->
+      <div class="panel" style="border-color: rgba(0, 200, 117, 0.32);">
+        <div class="panel-title">
+          <span>🔥 Ежедневный стрик (BC)</span>
+          <span class="fb-badge num" id="streakBadgeText" style="background:var(--green-soft);color:var(--green);border-color:rgba(0,200,117,0.35);">День 1</span>
+        </div>
+        <div class="panel-sub">Забирай награду каждый день: 100 → 200 → 300 → 400 → и далее всегда 500 BC!</div>
+
+        <div class="streak-grid" id="streakDaysGrid"></div>
+
+        <button class="btn btn-primary btn-full" id="claimStreakBtn" onclick="claimDailyStreak()">🎁 Забрать ежедневный бонус</button>
+      </div>
+
+      <!-- DAILY FORTUNE WHEEL CARD -->
+      <div class="wheel-casino-card">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;">
+          <strong style="font-size:15px;color:#fff;">🎡 Колесо Удачи (раз в день)</strong>
+          <span class="fb-badge num" id="wheelStatusBadge">Готово</span>
+        </div>
+        <div style="font-size:12px;color:var(--text-dim);margin-bottom:8px;">
+          Испытай удачу и выиграй до <strong style="color:var(--yellow);">1500 BC</strong> на основной счёт!
+        </div>
+
+        <div class="wheel-stage">
+          <div class="wheel-pointer" id="wheelPointer"></div>
+          <div class="wheel-outer-rim" id="wheelOuterRim">
+            <div class="wheel-inner-bed">
+              <canvas id="fortuneWheelCanvas" width="320" height="320"></canvas>
+            </div>
+          </div>
+          <div class="wheel-hub">💎</div>
+        </div>
+
+        <div class="wheel-odds-strip num">
+          <div class="w-chance-pill">
+            <div style="font-weight:900;color:#fff;">100 BC</div>
+            <div style="font-size:10px;color:var(--text-dim);">Шанс 60%</div>
+          </div>
+          <div class="w-chance-pill">
+            <div style="font-weight:900;color:#38bdf8;">250 BC</div>
+            <div style="font-size:10px;color:var(--text-dim);">Шанс 30%</div>
+          </div>
+          <div class="w-chance-pill">
+            <div style="font-weight:900;color:#c084fc;">500 BC</div>
+            <div style="font-size:10px;color:var(--text-dim);">Шанс 9%</div>
+          </div>
+          <div class="w-chance-pill jackpot">
+            <div style="font-weight:900;color:var(--yellow);">1500 BC</div>
+            <div style="font-size:10px;color:var(--yellow);">Шанс 1%</div>
+          </div>
+        </div>
+
+        <button class="btn btn-gold btn-full" id="spinWheelBtn" onclick="spinFortuneWheel()" style="font-size:14px;padding:12px;">
+          🎰 Крутить колесо бесплатно
+        </button>
+      </div>
+
+      <!-- PROMO CODES CARD -->
       <div class="panel" style="border-color: rgba(255, 214, 0, 0.28);">
         <div class="panel-title">
           <span>🎟 Промокоды на Фрибеты</span>
@@ -1343,8 +1545,8 @@
     <span class="nav-badge num hidden" id="mobBetsBadge">0</span>
   </button>
   <button class="nav-item" data-tab="farm" onclick="switchTab('farm')">
-    <span class="nav-icon">🎟</span>
-    <span>Промо</span>
+    <span class="nav-icon">🎁</span>
+    <span>Бонусы</span>
   </button>
   <button class="nav-item" data-tab="stats" onclick="switchTab('stats')">
     <span class="nav-icon">🏆</span>
@@ -1488,6 +1690,18 @@ const NARDY_TOTAL_LINES = [
   { line: 9.5, underOdd: 1.14, overOdd: 5.7 }
 ];
 
+// 8 секторов колеса фортуны (4x100, 2x250, 1x500, 1x1500)
+const WHEEL_SECTORS = [
+  { label: '100', color: '#1e2433', textColor: '#f5f7fa' },
+  { label: '250', color: '#0e7490', textColor: '#ffffff' },
+  { label: '100', color: '#262d40', textColor: '#f5f7fa' },
+  { label: '500', color: '#7e22ce', textColor: '#ffffff' },
+  { label: '100', color: '#1e2433', textColor: '#f5f7fa' },
+  { label: '250', color: '#0e7490', textColor: '#ffffff' },
+  { label: '100', color: '#262d40', textColor: '#f5f7fa' },
+  { label: '1500', color: '#d97706', textColor: '#fffbeb' }
+];
+
 let currentUser = null;
 let userProfile = null;
 let cloudEvents = [];
@@ -1500,10 +1714,16 @@ let currentTab = 'events';
 let subMode = 'prematch';
 let betsSub = 'active';
 let filterSport = 'Все';
+let filterMajorOnly = false;
+let filterTournament = 'all';
 let lineSearchQuery = '';
 let activeSheetEventId = null;
 let couponWallet = 'bc';
 let authMode = 'login';
+
+// Wheel animation state
+let wheelCurrentRotation = 0;
+let isWheelSpinning = false;
 
 // Bookmaker source filtering state
 let adminSourceView = localStorage.getItem('betlove_admin_view_src') || 'all';
@@ -1533,6 +1753,14 @@ function showToast(msg) {
 
 function formatCoins(val) { return Number(val || 0).toFixed(3); }
 function formatShort(val) { return Number(val || 0).toFixed(2); }
+
+function formatCooldownLeft(msLeft) {
+  if (msLeft <= 0) return 'Готово';
+  const totalMin = Math.ceil(msLeft / 60000);
+  const h = Math.floor(totalMin / 60);
+  const m = totalMin % 60;
+  return h > 0 ? `${h}ч ${m}м` : `${m}м`;
+}
 
 /* ================= BOOKMAKER SOURCE SETTINGS ================= */
 
@@ -1684,6 +1912,7 @@ async function onUserAuthenticated() {
   document.getElementById('authGate').classList.add('hidden');
   const sel = document.getElementById('adminSourceViewFilter');
   if (sel) sel.value = adminSourceView;
+  drawFortuneWheel();
   await syncAllCloudData(false);
 }
 
@@ -1734,7 +1963,237 @@ async function claimAdminRights() {
   showToast('👑 Права администратора активированы!');
 }
 
-/* ================= PROMO CODES (DB LIMITS + LEGACY BLV SUPPORT) ================= */
+/* ================= DAILY STREAK (100 -> 200 -> 300 -> 400 -> 500 BC) ================= */
+
+function getStreakVisualState() {
+  const rawStreak = Number(userProfile?.daily_streak || 0);
+  const lastAt = userProfile?.last_daily_at ? new Date(userProfile.last_daily_at).getTime() : 0;
+  const now = Date.now();
+  const cooldownMs = 20 * 3600 * 1000;
+  const expireMs = 48 * 3600 * 1000;
+
+  const isOnCooldown = lastAt > 0 && (now - lastAt) < cooldownMs;
+  const isExpired = lastAt > 0 && (now - lastAt) >= expireMs;
+  const effectiveStreak = isExpired ? 0 : rawStreak;
+  const nextDay = isOnCooldown ? effectiveStreak : (effectiveStreak + 1);
+  const nextReward = Math.min(500, Math.max(1, nextDay) * 100);
+  const msLeft = isOnCooldown ? (lastAt + cooldownMs - now) : 0;
+
+  return { effectiveStreak, isOnCooldown, nextDay, nextReward, msLeft };
+}
+
+function renderDailyStreakUI() {
+  const grid = document.getElementById('streakDaysGrid');
+  const btn = document.getElementById('claimStreakBtn');
+  const badge = document.getElementById('streakBadgeText');
+  if (!grid || !btn || !badge) return;
+
+  const st = getStreakVisualState();
+  badge.textContent = st.effectiveStreak > 0 ? `Серия: ${st.effectiveStreak} дн.` : 'День 1';
+
+  const days = [1, 2, 3, 4, 5];
+  grid.innerHTML = days.map((d) => {
+    const reward = d * 100;
+    const label = d === 5 ? '5+ дн.' : `День ${d}`;
+    let stateClass = '';
+    if (st.isOnCooldown) {
+      if (d <= Math.min(5, st.effectiveStreak)) stateClass = 'done';
+    } else {
+      if (d < Math.min(5, st.nextDay)) stateClass = 'done';
+      else if (d === Math.min(5, st.nextDay)) stateClass = 'ready';
+    }
+
+    return `
+      <div class="streak-day-box ${stateClass}">
+        <div class="streak-day-lbl">${label}</div>
+        <div class="streak-day-val num">+${reward}</div>
+        <div style="font-size:9px;color:var(--text-dim);margin-top:2px;">
+          ${stateClass === 'done' ? '✓ Получено' : stateClass === 'ready' ? '🔥 Сегодня' : 'BC'}
+        </div>
+      </div>
+    `;
+  }).join('');
+
+  if (st.isOnCooldown) {
+    btn.disabled = true;
+    btn.textContent = `⏳ Следующий бонус через ${formatCooldownLeft(st.msLeft)}`;
+  } else {
+    btn.disabled = false;
+    btn.textContent = `🎁 Забрать +${st.nextReward} BC (День ${st.nextDay})`;
+  }
+}
+
+async function claimDailyStreak() {
+  const btn = document.getElementById('claimStreakBtn');
+  btn.disabled = true;
+
+  const { data, error } = await sb.rpc('claim_daily_streak');
+  if (error || !data?.ok) {
+    showToast('⏳ ' + (data?.error || error?.message || 'Пока недоступно'));
+    await syncAllCloudData(false);
+    return;
+  }
+
+  await syncAllCloudData(false);
+  triggerHaptic(22);
+
+  document.getElementById('animBetBadge').textContent = `ЕЖЕДНЕВНЫЙ СТРИК • ДЕНЬ ${data.day}`;
+  document.getElementById('animBetTitle').textContent = 'Награда за вход начислена!';
+  document.getElementById('animBetStake').textContent = data.day >= 5 ? 'Максимальный бонус 500 BC/день активен' : 'Заходи завтра за следующей наградой';
+  document.getElementById('animBetWinSub').textContent = 'Зачислено на баланс';
+  document.getElementById('animBetWin').textContent = `+${data.reward} BC`;
+  const ov = document.getElementById('betAnimOverlay');
+  ov.classList.add('active');
+  setTimeout(() => ov.classList.remove('active'), 2000);
+}
+
+/* ================= DAILY FORTUNE WHEEL (ANIMATED CANVAS) ================= */
+
+function drawFortuneWheel() {
+  const canvas = document.getElementById('fortuneWheelCanvas');
+  if (!canvas) return;
+  const ctx = canvas.getContext('2d');
+  const size = canvas.width;
+  const cx = size / 2;
+  const cy = size / 2;
+  const r = cx - 4;
+  const count = WHEEL_SECTORS.length;
+  const arc = (Math.PI * 2) / count;
+
+  ctx.clearRect(0, 0, size, size);
+
+  for (let i = 0; i < count; i++) {
+    // Сектор 0 центрируем ровно под верхней стрелкой (-90 градусов)
+    const startAngle = -Math.PI / 2 - arc / 2 + i * arc;
+    const endAngle = startAngle + arc;
+    const sec = WHEEL_SECTORS[i];
+
+    ctx.beginPath();
+    ctx.moveTo(cx, cy);
+    ctx.arc(cx, cy, r, startAngle, endAngle);
+    ctx.closePath();
+    ctx.fillStyle = sec.color;
+    ctx.fill();
+
+    ctx.lineWidth = 2;
+    ctx.strokeStyle = 'rgba(255, 255, 255, 0.14)';
+    ctx.stroke();
+
+    // Подпись номинала внутри сектора
+    ctx.save();
+    ctx.translate(cx, cy);
+    ctx.rotate(startAngle + arc / 2);
+    ctx.textAlign = 'right';
+    ctx.fillStyle = sec.textColor;
+    ctx.font = sec.label === '1500' ? '900 20px system-ui, sans-serif' : '800 18px system-ui, sans-serif';
+    ctx.fillText(sec.label, r - 24, 6);
+    ctx.font = '700 10px system-ui, sans-serif';
+    ctx.fillStyle = 'rgba(255,255,255,0.65)';
+    ctx.fillText('BC', r - 26, 20);
+    ctx.restore();
+  }
+
+  // Декоративные золотые заклёпки по краю обода
+  for (let i = 0; i < count * 2; i++) {
+    const a = (i * Math.PI) / count;
+    const px = cx + Math.cos(a) * (r - 8);
+    const py = cy + Math.sin(a) * (r - 8);
+    ctx.beginPath();
+    ctx.arc(px, py, 3, 0, Math.PI * 2);
+    ctx.fillStyle = i % 2 === 0 ? '#ffd600' : '#ffffff';
+    ctx.fill();
+  }
+}
+
+function renderFortuneWheelUI() {
+  drawFortuneWheel();
+  const btn = document.getElementById('spinWheelBtn');
+  const badge = document.getElementById('wheelStatusBadge');
+  if (!btn || !badge || isWheelSpinning) return;
+
+  const lastAt = userProfile?.last_wheel_at ? new Date(userProfile.last_wheel_at).getTime() : 0;
+  const cooldownMs = 20 * 3600 * 1000;
+  const now = Date.now();
+  const isLocked = lastAt > 0 && (now - lastAt) < cooldownMs;
+
+  if (isLocked) {
+    const leftText = formatCooldownLeft(lastAt + cooldownMs - now);
+    badge.textContent = leftText;
+    badge.style.color = 'var(--text-dim)';
+    btn.disabled = true;
+    btn.textContent = `⏳ Доступно через ${leftText}`;
+  } else {
+    badge.textContent = 'Доступно';
+    badge.style.color = 'var(--yellow)';
+    btn.disabled = false;
+    btn.textContent = '🎰 Крутить колесо бесплатно';
+  }
+}
+
+async function spinFortuneWheel() {
+  if (isWheelSpinning) return;
+  const btn = document.getElementById('spinWheelBtn');
+  const canvas = document.getElementById('fortuneWheelCanvas');
+  const rim = document.getElementById('wheelOuterRim');
+  const pointer = document.getElementById('wheelPointer');
+
+  isWheelSpinning = true;
+  btn.disabled = true;
+  btn.textContent = '🎰 Крутим барабан...';
+
+  const { data, error } = await sb.rpc('spin_daily_wheel');
+  if (error || !data?.ok) {
+    isWheelSpinning = false;
+    showToast('⏳ ' + (data?.error || error?.message || 'Колесо пока недоступно'));
+    await syncAllCloudData(false);
+    return;
+  }
+
+  const targetSector = Number(data.sector) || 0;
+  const sectorAngle = 360 / WHEEL_SECTORS.length; // 45 градусов
+  // Чтобы нужный сектор пришёл ровно под верхнюю стрелку (0 град), поворачиваем на (360 - targetSector * 45)
+  const targetOffset = (360 - targetSector * sectorAngle) % 360;
+  const jitter = (Math.random() - 0.5) * 24; // лёгкое смещение внутри сектора для реализма
+  const currentMod = ((wheelCurrentRotation % 360) + 360) % 360;
+  const delta = ((targetOffset - currentMod + 360) % 360) + 360 * 6 + jitter;
+
+  wheelCurrentRotation += delta;
+
+  rim.classList.add('spinning-glow');
+  canvas.style.transition = 'transform 4.6s cubic-bezier(0.12, 0.88, 0.22, 1)';
+  canvas.style.transform = `rotate(${wheelCurrentRotation}deg)`;
+
+  // Тактильные щелчки язычка стрелки во время замедления
+  let ticks = 0;
+  const tickTimer = setInterval(() => {
+    ticks++;
+    pointer.classList.remove('tick');
+    void pointer.offsetWidth;
+    pointer.classList.add('tick');
+    if (ticks % 2 === 0) triggerHaptic(8);
+    if (ticks >= 24) clearInterval(tickTimer);
+  }, 175);
+
+  setTimeout(async () => {
+    clearInterval(tickTimer);
+    rim.classList.remove('spinning-glow');
+    isWheelSpinning = false;
+    triggerHaptic(30);
+
+    await syncAllCloudData(false);
+
+    document.getElementById('animBetBadge').textContent = data.reward >= 1500 ? '🔥 ДЖЕКПОТ КОЛЕСА УДАЧИ!' : '🎡 ВЫИГРЫШ В КОЛЕСЕ';
+    document.getElementById('animBetTitle').textContent = `Выпал сектор ${data.reward} BC!`;
+    document.getElementById('animBetStake').textContent = 'Возвращайся завтра за новым вращением';
+    document.getElementById('animBetWinSub').textContent = 'Зачислено на баланс';
+    document.getElementById('animBetWin').textContent = `+${data.reward} BC`;
+    const ov = document.getElementById('betAnimOverlay');
+    ov.classList.add('active');
+    setTimeout(() => ov.classList.remove('active'), 2300);
+  }, 4750);
+}
+
+/* ================= PROMO CODES (FREEBETS) ================= */
 
 const PROMO_K1 = 0x9E3779B9;
 const PROMO_K2 = 0x85EBCA6B;
@@ -1780,7 +2239,6 @@ async function redeemPromoCode() {
   btn.disabled = true;
 
   try {
-    // 1. Проверка старых BLV-кодов, если остались
     const decodedLegacy = decodeOpaquePromo(raw);
     if (decodedLegacy) {
       const { error } = await sb.rpc('redeem_promo_secure', {
@@ -1798,7 +2256,6 @@ async function redeemPromoCode() {
       return;
     }
 
-    // 2. Проверка промокодов из базы (с лимитом активаций, сроком действия и 1 на аккаунт)
     const { data, error } = await sb.rpc('redeem_promo', {
       p_user_id: currentUser.id,
       p_code: raw
@@ -2086,6 +2543,26 @@ function renderFilterBar() {
 
 function setSportFilter(sp) {
   filterSport = sp;
+  if (sp !== 'CS2') filterMajorOnly = false;
+  filterTournament = 'all';
+  document.getElementById('btnMajorOnly').classList.toggle('active', filterMajorOnly);
+  renderEventsTab();
+}
+
+function toggleMajorOnly() {
+  filterMajorOnly = !filterMajorOnly;
+  if (filterMajorOnly) {
+    filterSport = 'CS2';
+    filterTournament = 'all';
+  }
+  document.getElementById('btnMajorOnly').classList.toggle('active', filterMajorOnly);
+  renderEventsTab();
+}
+
+function setTournamentFilter(val) {
+  filterTournament = val;
+  if (val !== 'all') filterMajorOnly = false;
+  document.getElementById('btnMajorOnly').classList.toggle('active', filterMajorOnly);
   renderEventsTab();
 }
 
@@ -2134,8 +2611,26 @@ function renderEventsTab() {
   if (subMode === 'nardy') return;
 
   const sourceList = subMode === 'prematch' ? prematchList : liveList;
+
+  const tourneySel = document.getElementById('tournamentSelectFilter');
+  if (tourneySel) {
+    const uniqueT = [...new Set(sourceList
+      .filter(e => filterSport === 'Все' || e.category === filterSport)
+      .map(e => e.tournament || 'Турнир')
+    )].sort((a, b) => (/major/i.test(a) ? 0 : 1) - (/major/i.test(b) ? 0 : 1));
+
+    if (filterTournament !== 'all' && !uniqueT.includes(filterTournament)) {
+      filterTournament = 'all';
+    }
+
+    tourneySel.innerHTML = `<option value="all">Все турниры (${uniqueT.length})</option>` +
+      uniqueT.map(t => `<option value="${t.replace(/"/g, '&quot;')}" ${filterTournament === t ? 'selected' : ''}>${t}</option>`).join('');
+  }
+
   const filtered = sourceList.filter(ev => {
     if (filterSport !== 'Все' && ev.category !== filterSport) return false;
+    if (filterMajorOnly && !/major/i.test(`${ev.title} ${ev.tournament}`)) return false;
+    if (filterTournament !== 'all' && (ev.tournament || 'Турнир') !== filterTournament) return false;
     if (lineSearchQuery) {
       const hay = `${ev.title} ${ev.tournament}`.toLowerCase();
       if (!hay.includes(lineSearchQuery)) return false;
@@ -2148,7 +2643,7 @@ function renderEventsTab() {
     container.innerHTML = `
       <div class="empty-box">
         <div class="empty-title">${subMode === 'prematch' ? 'В линии пока нет матчей' : 'Сейчас нет матчей в Лайве'}</div>
-        <div class="empty-desc">Проверь выбранную дисциплину или включённые источники БК.</div>
+        <div class="empty-desc">Проверь выбранную дисциплину, турнир или включённые источники БК.</div>
       </div>
     `;
     return;
@@ -2161,15 +2656,22 @@ function renderEventsTab() {
     groups[t].matches.push(ev);
   });
 
-  container.innerHTML = Object.entries(groups).map(([tName, grp]) => {
+  const sortedEntries = Object.entries(groups).sort(([a], [b]) => {
+    const aMaj = /major/i.test(a) ? 0 : 1;
+    const bMaj = /major/i.test(b) ? 0 : 1;
+    return aMaj - bMaj;
+  });
+
+  container.innerHTML = sortedEntries.map(([tName, grp]) => {
     const collapsed = !!collapsedTournaments[tName];
     const safeT = tName.replace(/'/g, "\\'");
+    const isMaj = /major/i.test(tName);
     return `
-      <div class="tourney-group ${collapsed ? 'collapsed' : ''}">
+      <div class="tourney-group ${collapsed ? 'collapsed' : ''}" ${isMaj ? 'style="border-color:rgba(255,214,0,0.35);"' : ''}>
         <div class="tourney-header" onclick="collapsedTournaments['${safeT}'] = !collapsedTournaments['${safeT}']; renderEventsTab();">
           <div class="tourney-left">
             <span class="sport-tag">${grp.category}</span>
-            <span class="tourney-name">${tName}</span>
+            <span class="tourney-name">${isMaj ? '🏆 ' + tName : tName}</span>
           </div>
           <div class="tourney-right">
             <span class="nav-pill-count num">${grp.matches.length}</span>
@@ -2499,8 +3001,10 @@ async function placeBet() {
   await syncAllCloudData(false);
   triggerHaptic(20);
 
+  document.getElementById('animBetBadge').textContent = 'ПАРИ ПРИНЯТО СЕРВЕРОМ';
   document.getElementById('animBetTitle').textContent = `${typeLabel} • Кэф ${totalOdd.toFixed(2)}x`;
   document.getElementById('animBetStake').textContent = `Ставка: ${formatShort(stake)} ${isFb ? 'ФР' : 'BC'}`;
+  document.getElementById('animBetWinSub').textContent = 'Возможный выигрыш';
   document.getElementById('animBetWin').textContent = winText;
   const ov = document.getElementById('betAnimOverlay');
   ov.classList.add('active');
@@ -2700,6 +3204,9 @@ function renderBetsTab() {
 
 function renderFarmTab() {
   document.getElementById('farmFreebetBadge').textContent = `${Math.round(userProfile?.freebet_balance || 0)} ФР`;
+  renderDailyStreakUI();
+  renderFortuneWheelUI();
+
   const isAdmin = Boolean(userProfile && userProfile.is_admin);
   document.getElementById('devPromoGenBox').classList.toggle('hidden', !isAdmin);
   if (isAdmin) loadAdminPromos();
@@ -2789,6 +3296,7 @@ function closeSheetOnBackdrop(e, id) { if (e.target.id === id) closeSheet(id); }
 
 (async function initApp() {
   renderNardyTab();
+  drawFortuneWheel();
   const { data } = await sb.auth.getSession();
   if (data && data.session && data.session.user) {
     currentUser = data.session.user;
