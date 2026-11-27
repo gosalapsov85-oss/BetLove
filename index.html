@@ -383,6 +383,34 @@
     cursor: pointer;
   }
 
+  /* ADMIN BOOKMAKER FILTER BAR */
+  .admin-bk-bar {
+    background: var(--surface-1);
+    border: 1px solid rgba(255, 214, 0, 0.25);
+    border-radius: 12px;
+    padding: 10px 14px;
+    margin-bottom: 10px;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+  }
+  .bk-check-label {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--text);
+    cursor: pointer;
+    background: var(--surface-2);
+    border: 1px solid var(--border);
+    padding: 4px 9px;
+    border-radius: 8px;
+  }
+  .bk-check-label input { accent-color: var(--yellow); cursor: pointer; }
+
   .mobile-search-wrap { position: relative; margin-bottom: 10px; }
   .filter-bar { display: flex; gap: 6px; overflow-x: auto; padding-bottom: 6px; margin-bottom: 10px; scrollbar-width: none; }
   .filter-bar::-webkit-scrollbar { display: none; }
@@ -518,6 +546,7 @@
   @media (min-width: 1024px) { .match-top { justify-content: flex-start; margin-bottom: 4px; } }
   .match-meta { display: flex; align-items: center; gap: 5px; flex-wrap: wrap; }
   .bo-badge { background: rgba(255,255,255,0.08); color: var(--text); font-weight: 800; font-size: 10px; padding: 1px 6px; border-radius: 5px; }
+  .src-badge { background: rgba(255,255,255,0.05); color: var(--text-dim); font-weight: 700; font-size: 9.5px; padding: 1px 5px; border-radius: 4px; border: 1px solid var(--border); }
   .live-badge-pill { background: var(--red); color: #fff; font-weight: 900; font-size: 9.5px; padding: 1px 6px; border-radius: 4px; }
 
   .match-title-row { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 7px; }
@@ -549,7 +578,7 @@
     white-space: nowrap;
   }
 
-  .outcomes-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(96px, 1fr)); gap: 6px; }
+  .outcomes-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(84px, 1fr)); gap: 6px; }
   .odd-btn {
     background: var(--surface-3);
     border: 1px solid rgba(255, 255, 255, 0.06);
@@ -581,6 +610,25 @@
     justify-content: space-between;
     gap: 6px;
     flex-wrap: wrap;
+  }
+
+  /* PROMO ADMIN LIST */
+  .promo-admin-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: 8px;
+    margin-bottom: 10px;
+  }
+  .promo-item-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    background: var(--surface-2);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 9px 11px;
+    font-size: 12.5px;
   }
 
   /* ADAPTIVE COUPON */
@@ -966,6 +1014,32 @@
           <span style="color:var(--yellow);font-size:12px;">Опубликовать →</span>
         </button>
 
+        <!-- ADMIN ONLY BOOKMAKER SOURCE FILTER & GLOBAL VISIBILITY -->
+        <div id="adminBookmakerBar" class="admin-bk-bar hidden">
+          <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+            <span style="font-size:11.5px;font-weight:800;color:var(--yellow);">📡 БК (мой вид):</span>
+            <select id="adminSourceViewFilter" class="select" onchange="setAdminSourceView(this.value)" style="width:auto;padding:6px 10px;font-size:12px;">
+              <option value="all">Все источники</option>
+              <option value="polymarket">Только Polymarket (Киберспорт)</option>
+              <option value="sharpapi">Только SharpAPI (Спорт)</option>
+              <option value="manual">Только ручные (Админ)</option>
+            </select>
+          </div>
+
+          <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
+            <span style="font-size:11px;color:var(--text-dim);font-weight:700;">Показывать всем:</span>
+            <label class="bk-check-label">
+              <input type="checkbox" id="visPolymarket" checked onchange="saveGlobalVisibleBookmakers()"> Polymarket
+            </label>
+            <label class="bk-check-label">
+              <input type="checkbox" id="visSharpapi" checked onchange="saveGlobalVisibleBookmakers()"> SharpAPI
+            </label>
+            <label class="bk-check-label">
+              <input type="checkbox" id="visManual" checked onchange="saveGlobalVisibleBookmakers()"> Ручные
+            </label>
+          </div>
+        </div>
+
         <div class="mobile-search-wrap mobile-only">
           <span class="s-ico">🔍</span>
           <input id="mobSearchInput" class="search-input-box" placeholder="Поиск команды или турнира..." oninput="onLineSearch(this.value)">
@@ -1088,22 +1162,48 @@
             <span class="fb-badge num" id="farmFreebetBadge">0 ФР</span>
           </div>
         </div>
-        <div class="panel-sub">Каждый промокод проверяется сервером и привязывается к твоему аккаунту.</div>
+        <div class="panel-sub">Каждый промокод проверяется сервером (1 активация на 1 аккаунт).</div>
         <div class="row-2" style="margin-top:8px;">
-          <input id="promoCodeInput" class="input" placeholder="BLV-XXXX-XXXX-XXXX" style="text-transform:uppercase;font-family:monospace;font-size:12px;">
+          <input id="promoCodeInput" class="input" placeholder="Введи промокод..." style="text-transform:uppercase;font-family:monospace;font-size:12.5px;">
           <button class="btn btn-gold" id="redeemPromoBtn" onclick="redeemPromoCode()">Активировать</button>
         </div>
+      </div>
 
-        <!-- ADMIN ONLY PROMO GENERATOR -->
-        <div id="devPromoGenBox" class="hidden" style="margin-top:12px;padding-top:12px;border-top:1px dashed var(--border-strong);">
-          <div style="font-size:11px;color:var(--yellow);font-weight:800;margin-bottom:6px;">👑 Админ-генератор промокодов:</div>
-          <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:5px;margin-bottom:6px;">
-            <button class="btn btn-secondary btn-sm" onclick="spawnDevPromo(100)">+100</button>
-            <button class="btn btn-secondary btn-sm" onclick="spawnDevPromo(300)">+300</button>
-            <button class="btn btn-secondary btn-sm" onclick="spawnDevPromo(500)">+500</button>
-            <button class="btn btn-secondary btn-sm" onclick="spawnDevPromo(1000)">+1000</button>
+      <!-- ADMIN ONLY PROMO CREATOR & LIST -->
+      <div id="devPromoGenBox" class="panel hidden" style="border-color: rgba(255, 214, 0, 0.35);">
+        <div class="panel-title">
+          <span style="color:var(--yellow);">👑 Админ: создать промокод</span>
+          <span style="font-size:11px;color:var(--text-dim);">1 раз на аккаунт</span>
+        </div>
+        <div class="panel-sub">Укажи лимит активаций и/или дату окончания действия промокода.</div>
+
+        <div class="promo-admin-grid">
+          <div>
+            <label class="label">Код (например, MAJOR2026)</label>
+            <input id="admPromoCode" class="input" placeholder="MAJOR2026" style="text-transform:uppercase;font-family:monospace;">
           </div>
-          <input id="devGeneratedCodeOut" class="input" readonly placeholder="Сгенерированный код появится здесь" style="font-family:monospace;font-size:12px;color:var(--yellow);text-align:center;">
+          <div>
+            <label class="label">Бонус (ФР)</label>
+            <input id="admPromoReward" type="number" min="1" step="10" class="input" placeholder="500">
+          </div>
+          <div>
+            <label class="label">Макс. активаций (пусто = ∞)</label>
+            <input id="admPromoMaxUses" type="number" min="1" step="1" class="input" placeholder="50">
+          </div>
+          <div>
+            <label class="label">Действует до (пусто = бессрочно)</label>
+            <input id="admPromoExpires" type="datetime-local" class="input">
+          </div>
+        </div>
+
+        <button class="btn btn-primary btn-full" id="createPromoBtn" onclick="createAdminPromo()">+ Опубликовать промокод</button>
+
+        <div style="margin-top:14px;padding-top:12px;border-top:1px dashed var(--border-strong);">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+            <span style="font-size:12px;font-weight:800;color:var(--text);">Созданные промокоды:</span>
+            <button class="btn btn-secondary btn-sm" onclick="loadAdminPromos()">↻ Обновить</button>
+          </div>
+          <div id="adminPromoList" style="display:flex;flex-direction:column;gap:7px;"></div>
         </div>
       </div>
     </div>
@@ -1268,7 +1368,7 @@
         Раздел со ссылкой на Telegram-канал автора, где будут публиковаться регулярные розыгрыши и раздачи фрибетов, сейчас находится <strong>в разработке</strong>.
       </div>
       <div style="font-size:12px;color:var(--text-dim);line-height:1.5;">
-        При этом сама система промокодов уже полностью готова и проверяется на сервере: если у тебя есть код формата <code style="color:var(--yellow);">BLV-XXXX-XXXX-XXXX</code>, его можно активировать прямо сейчас.
+        Если администратор выдал тебе промокод (например, <code style="color:var(--yellow);">MAJOR2026</code>), введи его в поле выше — фрибеты начислятся мгновенно.
       </div>
     </div>
     <button class="btn btn-gold btn-full" onclick="closeSheet('promoInfoSheetBackdrop')">Понятно</button>
@@ -1310,6 +1410,8 @@
           <select id="cCategory" class="select">
             <option value="CS2">CS2</option>
             <option value="Dota 2">Dota 2</option>
+            <option value="Valorant">Valorant</option>
+            <option value="LoL">LoL</option>
             <option value="Футбол">Футбол</option>
             <option value="Хоккей">Хоккей</option>
             <option value="Баскетбол">Баскетбол</option>
@@ -1324,6 +1426,7 @@
             <option value="BO1">BO1</option>
             <option value="BO3" selected>BO3</option>
             <option value="BO5">BO5</option>
+            <option value="Матч">Матч</option>
           </select>
         </div>
       </div>
@@ -1374,7 +1477,7 @@ const SUPABASE_URL = 'https://gwluwyobukouxylviskn.supabase.co';
 const SUPABASE_KEY = 'sb_publishable_AnScDJTAAkDFL_zvpW1LmA_fWvAT0A6';
 const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
-const SPORTS = ['Все', 'CS2', 'Dota 2', 'Футбол', 'Хоккей', 'Баскетбол', 'Теннис', 'MMA / Бокс', 'Другое'];
+const SPORTS = ['Все', 'CS2', 'Dota 2', 'Valorant', 'LoL', 'Футбол', 'Хоккей', 'Баскетбол', 'Теннис', 'MMA / Бокс', 'Другое'];
 
 const NARDY_TOTAL_LINES = [
   { line: 4.5, underOdd: 5.7, overOdd: 1.14 },
@@ -1402,6 +1505,10 @@ let activeSheetEventId = null;
 let couponWallet = 'bc';
 let authMode = 'login';
 
+// Bookmaker source filtering state
+let adminSourceView = localStorage.getItem('betlove_admin_view_src') || 'all';
+let globalVisibleBookmakers = { polymarket: true, sharpapi: true, manual: true };
+
 // Nardy state
 let nardyChip = 100;
 let nardyPicks = [];
@@ -1426,6 +1533,77 @@ function showToast(msg) {
 
 function formatCoins(val) { return Number(val || 0).toFixed(3); }
 function formatShort(val) { return Number(val || 0).toFixed(2); }
+
+/* ================= BOOKMAKER SOURCE SETTINGS ================= */
+
+function getEventBookmaker(ev) {
+  const id = String(ev?.id || '');
+  if (id.startsWith('pm_')) return 'polymarket';
+  if (id.startsWith('ext_')) return 'sharpapi';
+  return 'manual';
+}
+
+function getBookmakerBadgeName(src) {
+  if (src === 'polymarket') return 'Polymarket';
+  if (src === 'sharpapi') return 'SharpAPI';
+  return 'Админ';
+}
+
+async function loadGlobalVisibleBookmakers() {
+  try {
+    const { data } = await sb
+      .from('app_settings')
+      .select('value')
+      .eq('key', 'visible_bookmakers')
+      .maybeSingle();
+
+    if (data?.value) {
+      globalVisibleBookmakers = {
+        polymarket: data.value.polymarket !== false,
+        sharpapi: data.value.sharpapi !== false,
+        manual: data.value.manual !== false
+      };
+    }
+  } catch (e) {}
+
+  const cbPm = document.getElementById('visPolymarket');
+  const cbSh = document.getElementById('visSharpapi');
+  const cbMn = document.getElementById('visManual');
+  if (cbPm) cbPm.checked = globalVisibleBookmakers.polymarket;
+  if (cbSh) cbSh.checked = globalVisibleBookmakers.sharpapi;
+  if (cbMn) cbMn.checked = globalVisibleBookmakers.manual;
+}
+
+async function saveGlobalVisibleBookmakers() {
+  const nextVal = {
+    polymarket: !!document.getElementById('visPolymarket')?.checked,
+    sharpapi: !!document.getElementById('visSharpapi')?.checked,
+    manual: !!document.getElementById('visManual')?.checked
+  };
+  globalVisibleBookmakers = nextVal;
+
+  const { error } = await sb.rpc('admin_set_visible_bookmakers', { p_value: nextVal });
+  if (error) {
+    showToast('❌ ' + error.message);
+  } else {
+    showToast('✅ Видимость БК обновлена для всех игроков');
+  }
+  renderEventsTab();
+}
+
+function setAdminSourceView(val) {
+  adminSourceView = val;
+  localStorage.setItem('betlove_admin_view_src', val);
+  renderEventsTab();
+}
+
+function isEventAllowedByBookmaker(ev, isAdmin) {
+  const src = getEventBookmaker(ev);
+  if (isAdmin && adminSourceView !== 'all') {
+    return src === adminSourceView;
+  }
+  return globalVisibleBookmakers[src] !== false;
+}
 
 /* ================= CLOUD AUTH (NICKNAME + PASSWORD) ================= */
 
@@ -1504,6 +1682,8 @@ async function logoutCloudUser() {
 
 async function onUserAuthenticated() {
   document.getElementById('authGate').classList.add('hidden');
+  const sel = document.getElementById('adminSourceViewFilter');
+  if (sel) sel.value = adminSourceView;
   await syncAllCloudData(false);
 }
 
@@ -1513,7 +1693,8 @@ async function syncAllCloudData(notify = false) {
   const [profRes, evRes, betsRes] = await Promise.all([
     sb.from('profiles').select('*').eq('id', currentUser.id).single(),
     sb.from('events').select('*').order('start_time', { ascending: true }),
-    sb.from('bets').select('*').eq('user_id', currentUser.id).order('created_at', { ascending: false }).limit(60)
+    sb.from('bets').select('*').eq('user_id', currentUser.id).order('created_at', { ascending: false }).limit(60),
+    loadGlobalVisibleBookmakers()
   ]);
 
   if (profRes.data) userProfile = profRes.data;
@@ -1534,6 +1715,7 @@ async function syncAllCloudData(notify = false) {
 function renderAdminVisibility() {
   const isAdmin = Boolean(userProfile && userProfile.is_admin);
   document.getElementById('adminCreateBar').classList.toggle('hidden', !isAdmin);
+  document.getElementById('adminBookmakerBar').classList.toggle('hidden', !isAdmin);
   document.getElementById('adminClaimBox').classList.toggle('hidden', isAdmin);
   document.getElementById('devPromoGenBox').classList.toggle('hidden', !isAdmin);
   document.getElementById('profileRoleBadge').textContent = isAdmin ? '👑 Администратор' : 'Игрок';
@@ -1552,7 +1734,7 @@ async function claimAdminRights() {
   showToast('👑 Права администратора активированы!');
 }
 
-/* ================= PROMO CODES (SERVER VALIDATED, ADMIN-ONLY GENERATOR) ================= */
+/* ================= PROMO CODES (DB LIMITS + LEGACY BLV SUPPORT) ================= */
 
 const PROMO_K1 = 0x9E3779B9;
 const PROMO_K2 = 0x85EBCA6B;
@@ -1562,25 +1744,6 @@ function feistelRound(val16, key32) {
   let x = (val16 ^ (key32 & 0xFFFF)) >>> 0;
   x = Math.imul(x | 1, 0x45D9F3B) >>> 0;
   return ((x >>> 16) ^ (x >>> 7)) & 0xFFFF;
-}
-
-function encodeOpaquePromo(amount, nonce20 = null) {
-  const amt = Math.max(1, Math.min(4095, Math.floor(Number(amount) || 100)));
-  const nonce = (nonce20 !== null ? (nonce20 >>> 0) : Math.floor(Math.random() * 1048576)) & 0xFFFFF;
-  let L = ((amt << 4) | (nonce >>> 16)) & 0xFFFF;
-  let R = nonce & 0xFFFF;
-  for (let r = 0; r < 4; r++) {
-    const k = Math.imul(PROMO_K1 + r, PROMO_K2) >>> 0;
-    const nextL = R;
-    const nextR = (L ^ feistelRound(R, k)) & 0xFFFF;
-    L = nextL;
-    R = nextR;
-  }
-  const block32 = (((L << 16) | R) >>> 0);
-  const sig16 = ((Math.imul(block32 ^ PROMO_K3, PROMO_K1) >>> 16) ^ (block32 & 0xFFFF)) & 0xFFFF;
-  const hexMain = block32.toString(16).toUpperCase().padStart(8, '0');
-  const hexSig = sig16.toString(16).toUpperCase().padStart(4, '0');
-  return `BLV-${hexMain.slice(0, 4)}-${hexMain.slice(4, 8)}-${hexSig}`;
 }
 
 function decodeOpaquePromo(rawCode) {
@@ -1612,45 +1775,152 @@ async function redeemPromoCode() {
     showToast('Введи промокод');
     return;
   }
-  const decoded = decodeOpaquePromo(raw);
-  if (!decoded) {
-    showToast('❌ Недействительный промокод');
-    return;
-  }
 
   const btn = document.getElementById('redeemPromoBtn');
   btn.disabled = true;
-  const { error } = await sb.rpc('redeem_promo_secure', {
-    p_token_id: decoded.tokenId,
-    p_amount: decoded.amount
-  });
-  btn.disabled = false;
 
-  if (error) {
-    showToast('⚠️ Промокод уже активирован на этом аккаунте');
-    return;
+  try {
+    // 1. Проверка старых BLV-кодов, если остались
+    const decodedLegacy = decodeOpaquePromo(raw);
+    if (decodedLegacy) {
+      const { error } = await sb.rpc('redeem_promo_secure', {
+        p_token_id: decodedLegacy.tokenId,
+        p_amount: decodedLegacy.amount
+      });
+      if (error) {
+        showToast('⚠️ Промокод уже активирован на этом аккаунте');
+      } else {
+        document.getElementById('promoCodeInput').value = '';
+        await syncAllCloudData(false);
+        triggerHaptic(18);
+        showToast(`🎟 Зачислено +${decodedLegacy.amount} ФР!`);
+      }
+      return;
+    }
+
+    // 2. Проверка промокодов из базы (с лимитом активаций, сроком действия и 1 на аккаунт)
+    const { data, error } = await sb.rpc('redeem_promo', {
+      p_user_id: currentUser.id,
+      p_code: raw
+    });
+
+    if (error) {
+      showToast('❌ ' + error.message);
+      return;
+    }
+
+    if (!data || !data.ok) {
+      showToast('⚠️ ' + (data?.error || 'Не удалось активировать промокод'));
+      return;
+    }
+
+    document.getElementById('promoCodeInput').value = '';
+    await syncAllCloudData(false);
+    triggerHaptic(18);
+    showToast(`🎟 Промокод активирован! +${data.reward} ФР`);
+  } finally {
+    btn.disabled = false;
   }
-
-  document.getElementById('promoCodeInput').value = '';
-  await syncAllCloudData(false);
-  triggerHaptic(18);
-  showToast(`🎟 Зачислено +${decoded.amount} ФР на серверный баланс!`);
 }
 
 function openPromoInfoModal() {
   document.getElementById('promoInfoSheetBackdrop').classList.add('open');
 }
 
-function spawnDevPromo(amt) {
+async function createAdminPromo() {
   if (!userProfile || !userProfile.is_admin) return;
-  const code = encodeOpaquePromo(amt);
-  document.getElementById('devGeneratedCodeOut').value = code;
-  document.getElementById('promoCodeInput').value = code;
+  const code = document.getElementById('admPromoCode').value.trim().toUpperCase();
+  const reward = Number(document.getElementById('admPromoReward').value);
+  const maxUsesRaw = document.getElementById('admPromoMaxUses').value.trim();
+  const expiresRaw = document.getElementById('admPromoExpires').value;
+
+  if (!code || code.length < 2) {
+    showToast('Введи название промокода');
+    return;
+  }
+  if (!Number.isFinite(reward) || reward <= 0) {
+    showToast('Укажи сумму бонуса в ФР');
+    return;
+  }
+
+  const maxUses = maxUsesRaw ? Math.max(1, parseInt(maxUsesRaw, 10)) : null;
+  const expiresAt = expiresRaw ? new Date(expiresRaw).toISOString() : null;
+
+  const btn = document.getElementById('createPromoBtn');
+  btn.disabled = true;
+
+  const { error } = await sb.rpc('admin_create_promo', {
+    p_code: code,
+    p_reward: reward,
+    p_max_uses: maxUses,
+    p_expires_at: expiresAt
+  });
+
+  btn.disabled = false;
+
+  if (error) {
+    showToast('❌ ' + error.message);
+    return;
+  }
+
+  document.getElementById('admPromoCode').value = '';
+  document.getElementById('admPromoReward').value = '';
+  document.getElementById('admPromoMaxUses').value = '';
+  document.getElementById('admPromoExpires').value = '';
   if (navigator.clipboard) navigator.clipboard.writeText(code).catch(() => {});
-  showToast(`👑 Код на ${amt} ФР создан и скопирован!`);
+  showToast(`👑 Промокод ${code} создан и скопирован!`);
+  loadAdminPromos();
 }
 
-/* ================= ADMIN PUBLISH & SETTLE (NO AUTO MARKETS) ================= */
+async function loadAdminPromos() {
+  const container = document.getElementById('adminPromoList');
+  if (!container || !userProfile?.is_admin) return;
+
+  const { data, error } = await sb
+    .from('promocodes')
+    .select('*')
+    .order('created_at', { ascending: false })
+    .limit(30);
+
+  if (error || !data) {
+    container.innerHTML = `<div style="font-size:12px;color:var(--text-dim);">Не удалось загрузить список промокодов</div>`;
+    return;
+  }
+
+  if (data.length === 0) {
+    container.innerHTML = `<div style="font-size:12px;color:var(--text-dim);">Промокодов пока нет</div>`;
+    return;
+  }
+
+  container.innerHTML = data.map((p) => {
+    const usesText = p.max_uses ? `${p.used_count || 0} / ${p.max_uses} акт.` : `${p.used_count || 0} / ∞ акт.`;
+    const expText = p.expires_at ? `до ${new Date(p.expires_at).toLocaleString('ru-RU', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}` : 'бессрочно';
+    const isExpired = p.expires_at && new Date(p.expires_at).getTime() < Date.now();
+    const isFull = p.max_uses && (p.used_count || 0) >= p.max_uses;
+    const isDead = isExpired || isFull || !p.active;
+
+    return `
+      <div class="promo-item-row">
+        <div style="min-width:0;">
+          <div>
+            <strong style="color:#fff;font-family:monospace;">${p.code}</strong>
+            <span style="color:var(--yellow);font-weight:800;margin-left:6px;" class="num">+${p.reward} ФР</span>
+          </div>
+          <div style="font-size:11px;color:var(--text-dim);margin-top:2px;" class="num">
+            ${usesText} • ${expText}
+          </div>
+        </div>
+        <div style="flex-shrink:0;">
+          ${isDead
+            ? '<span style="color:var(--red);font-size:11px;font-weight:800;">Завершён</span>'
+            : '<span style="color:var(--green);font-size:11px;font-weight:800;">Активен</span>'}
+        </div>
+      </div>
+    `;
+  }).join('');
+}
+
+/* ================= ADMIN PUBLISH & SETTLE ================= */
 
 function openCreateModal() {
   if (!userProfile || !userProfile.is_admin) return;
@@ -1715,7 +1985,7 @@ async function importJsonEventsCloud() {
     const items = Array.isArray(parsed) ? parsed : [parsed];
     const payload = items.map((item, idx) => {
       const cat = SPORTS.includes(item.category) && item.category !== 'Все' ? item.category : 'CS2';
-      const fmt = ['BO1', 'BO3', 'BO5'].includes(item.format) ? item.format : 'BO3';
+      const fmt = ['BO1', 'BO3', 'BO5', 'Матч'].includes(item.format) ? item.format : 'BO3';
       const outs = (item.outcomes || []).map(o => ({
         name: String(o.name || o.label || 'Исход'),
         odd: Math.max(1.01, Number(o.odd || o.odds || 1.85))
@@ -1745,7 +2015,9 @@ async function importJsonEventsCloud() {
 }
 
 async function adminSettleMatch(eventId, winnerIndex) {
-  const label = winnerIndex === 0 ? 'Победа П1' : winnerIndex === 1 ? 'Победа П2' : 'Возврат';
+  const ev = cloudEvents.find(e => e.id === eventId);
+  const outName = winnerIndex >= 0 && ev?.outcomes?.[winnerIndex]?.name ? ev.outcomes[winnerIndex].name : null;
+  const label = winnerIndex === -1 ? 'Возврат' : `Победа ${outName || (winnerIndex === 0 ? 'П1' : 'П2')}`;
   if (!confirm(`Закрыть матч и рассчитать всем игрокам: ${label}?`)) return;
 
   const { data, error } = await sb.rpc('admin_settle_event', {
@@ -1849,8 +2121,11 @@ function isSelectedInCoupon(eventId, marketId, outcomeIndex) {
 
 function renderEventsTab() {
   renderFilterBar();
-  const prematchList = cloudEvents.filter(e => getEffectiveEventStatus(e) === 'prematch');
-  const liveList = cloudEvents.filter(e => getEffectiveEventStatus(e) === 'live');
+  const isAdmin = Boolean(userProfile && userProfile.is_admin);
+  const allowedEvents = cloudEvents.filter(e => isEventAllowedByBookmaker(e, isAdmin));
+
+  const prematchList = allowedEvents.filter(e => getEffectiveEventStatus(e) === 'prematch');
+  const liveList = allowedEvents.filter(e => getEffectiveEventStatus(e) === 'live');
 
   document.getElementById('countPrematch').textContent = prematchList.length;
   document.getElementById('countLive').textContent = liveList.length;
@@ -1873,7 +2148,7 @@ function renderEventsTab() {
     container.innerHTML = `
       <div class="empty-box">
         <div class="empty-title">${subMode === 'prematch' ? 'В линии пока нет матчей' : 'Сейчас нет матчей в Лайве'}</div>
-        <div class="empty-desc">Новые события публикуются администратором в облако и сразу появляются у всех игроков.</div>
+        <div class="empty-desc">Проверь выбранную дисциплину или включённые источники БК.</div>
       </div>
     `;
     return;
@@ -1885,8 +2160,6 @@ function renderEventsTab() {
     if (!groups[t]) groups[t] = { category: ev.category, matches: [] };
     groups[t].matches.push(ev);
   });
-
-  const isAdmin = Boolean(userProfile && userProfile.is_admin);
 
   container.innerHTML = Object.entries(groups).map(([tName, grp]) => {
     const collapsed = !!collapsedTournaments[tName];
@@ -1917,6 +2190,7 @@ function renderMatchCard(ev, mode, isAdmin) {
   const isLocked = mode !== 'prematch' || now >= startMs;
   const outcomes = Array.isArray(ev.outcomes) ? ev.outcomes : [];
   const extrasCount = Array.isArray(ev.extra_markets) ? ev.extra_markets.length : 0;
+  const bkSrc = getEventBookmaker(ev);
 
   let probBarHtml = '';
   if (outcomes.length >= 2) {
@@ -1947,6 +2221,7 @@ function renderMatchCard(ev, mode, isAdmin) {
           <div class="match-meta">
             ${mode === 'live' ? '<span class="live-badge-pill">LIVE</span>' : ''}
             <span class="bo-badge">${ev.format || 'BO3'}</span>
+            ${isAdmin ? `<span class="src-badge">${getBookmakerBadgeName(bkSrc)}</span>` : ''}
           </div>
           <span class="num">${timeStr}</span>
         </div>
@@ -1980,8 +2255,9 @@ function renderMatchCard(ev, mode, isAdmin) {
           <div class="admin-settle-bar">
             <span style="font-size:10.5px;color:var(--yellow);font-weight:800;">👑 Итог:</span>
             <div style="display:flex;gap:4px;">
-              <button class="btn btn-primary btn-sm" onclick="adminSettleMatch('${ev.id}', 0)">П1</button>
-              <button class="btn btn-primary btn-sm" onclick="adminSettleMatch('${ev.id}', 1)">П2</button>
+              ${outcomes.map((out, idx) => `
+                <button class="btn btn-primary btn-sm" onclick="adminSettleMatch('${ev.id}', ${idx})">${out.name}</button>
+              `).join('')}
               <button class="btn btn-secondary btn-sm" onclick="adminSettleMatch('${ev.id}', -1)">Возврат</button>
             </div>
           </div>
@@ -2426,6 +2702,7 @@ function renderFarmTab() {
   document.getElementById('farmFreebetBadge').textContent = `${Math.round(userProfile?.freebet_balance || 0)} ФР`;
   const isAdmin = Boolean(userProfile && userProfile.is_admin);
   document.getElementById('devPromoGenBox').classList.toggle('hidden', !isAdmin);
+  if (isAdmin) loadAdminPromos();
 }
 
 async function loadLeaderboard() {
