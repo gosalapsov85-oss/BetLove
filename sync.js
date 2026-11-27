@@ -40,7 +40,7 @@ async function fetchGamma(path) {
 function extractArray(raw) {
   if (Array.isArray(raw)) return raw;
   if (!raw || typeof raw !== 'object') return [];
-  return raw.data || raw.events || raw.odds || raw.items || [];
+  return raw.data || raw.events || raw.odds || raw.scores || raw.items || [];
 }
 
 function parseJsonArray(val) {
@@ -59,6 +59,7 @@ function parseJsonArray(val) {
 function priceToOdd(priceRaw) {
   const p = Number(priceRaw);
   if (!Number.isFinite(p) || p <= 0.02 || p >= 0.98) return null;
+  // Букмекерская маржа ~7% (множитель 0.93)
   const odd = Number((0.93 / p).toFixed(2));
   return odd >= 1.03 && odd <= 35 ? odd : null;
 }
@@ -96,6 +97,30 @@ function parseMatchTitle(title = '') {
   return null;
 }
 
+function pickPolymarketMainMarket(ev) {
+  const markets = Array.isArray(ev?.markets) ? ev.markets : [];
+  let mainMarket = markets.find((m) => {
+    const outcomes = parseJsonArray(m.outcomes);
+    const prices = parseJsonArray(m.outcomePrices);
+    const q = String(m.question || '');
+    return (
+      outcomes.length === 2 &&
+      prices.length === 2 &&
+      !/map\s*\d|game\s*\d|handicap|spread|total|over|under|kill|round|pistol/i.test(q)
+    );
+  });
+
+  if (!mainMarket) {
+    mainMarket = markets.find((m) => {
+      const outcomes = parseJsonArray(m.outcomes);
+      const prices = parseJsonArray(m.outcomePrices);
+      return outcomes.length === 2 && prices.length === 2;
+    });
+  }
+  return mainMarket || null;
+}
+
+// 1. Polymarket Gamma API: живые рыночные коэффициенты с маржой для CS2, Dota 2, Valorant и LoL
 async function fetchPolymarketEsports() {
   const tagQueries = new Map();
 
@@ -172,30 +197,8 @@ async function fetchPolymarketEsports() {
     const parsed = parseMatchTitle(title);
     if (!parsed) continue;
 
-    const markets = Array.isArray(ev.markets) ? ev.markets : [];
-
-    let mainMarket = markets.find((m) => {
-      if (m.closed) return false;
-      const outcomes = parseJsonArray(m.outcomes);
-      const prices = parseJsonArray(m.outcomePrices);
-      const q = String(m.question || '');
-      return (
-        outcomes.length === 2 &&
-        prices.length === 2 &&
-        !/map\s*\d|game\s*\d|handicap|spread|total|over|under|kill|round|pistol/i.test(q)
-      );
-    });
-
-    if (!mainMarket) {
-      mainMarket = markets.find((m) => {
-        if (m.closed) return false;
-        const outcomes = parseJsonArray(m.outcomes);
-        const prices = parseJsonArray(m.outcomePrices);
-        return outcomes.length === 2 && prices.length === 2;
-      });
-    }
-
-    if (!mainMarket) continue;
+    const mainMarket = pickPolymarketMainMarket(ev);
+    if (!mainMarket || mainMarket.closed) continue;
 
     const rawStart = mainMarket.gameStartTime || ev.gameStartTime || ev.eventDate || ev.startTime || ev.endDate;
     if (!rawStart) continue;
@@ -331,6 +334,7 @@ function getDecimalOdd(item) {
   return null;
 }
 
+// 2. SharpAPI: реальный классический спорт
 async function fetchSharpClassicSports() {
   if (!SHARPAPI_KEY) return [];
 
@@ -436,8 +440,183 @@ async function fetchSharpClassicSports() {
   return results;
 }
 
+// 3. Авторасчёт завершённых матчей с Polymarket и SharpAPI
+async function settlePolymarketEvent(dbEv) {
+  const rawExt = String(dbEv.external_id || dbEv.id.split('_').pop() || '');
+  const pmId = rawExt.replace(/^pm_/, '');
+  if (!pmId) return false;
+
+  const ev = await fetchGamma(`/events/${pmId}`);
+  if (!ev) return false;
+
+  const mainMarket = pickPolymarketMainMarket(ev);
+  if (!mainMarket) return false;
+
+  const isClosed = Boolean(ev.closed || mainMarket.closed);
+  if (!isClosed) return false;
+
+  const outcomesArr = parseJsonArray(mainMarket.outcomes);
+  const pricesArr = parseJsonArray(mainMarket.outcomePrices).map(Number);
+  if (outcomesArr.length < 2 || pricesArr.length < 2) return false;
+
+  let rawWinnerIdx = -1;
+  if (pricesArr[0] >= 0.95 && pricesArr[1] <= 0.05) rawWinnerIdx = 0;
+  else if (pricesArr[1] >= 0.95 && pricesArr[0] <= 0.05) rawWinnerIdx = 1;
+  else return false;
+
+  // Проверяем, не менялись ли команды местами при импорте
+  const parsed = parseMatchTitle(dbEv.title);
+  let winnerIdx = rawWinnerIdx;
+  if (parsed) {
+    const out0 = String(outcomesArr[0] || '').toLowerCase();
+    const out1 = String(outcomesArr[1] || '').toLowerCase();
+    const t1Low = parsed.team1.toLowerCase();
+    const t2Low = parsed.team2.toLowerCase();
+    const swapped = (out0.includes(t2Low) || t2Low.includes(out0)) && (out1.includes(t1Low) || t1Low.includes(out1));
+    if (swapped) winnerIdx = rawWinnerIdx === 0 ? 1 : 0;
+  }
+
+  const { data, error } = await sb.rpc('admin_settle_event', {
+    p_event_id: dbEv.id,
+    p_winner_index: winnerIdx,
+    p_score: ''
+  });
+
+  if (error) {
+    console.warn(`Settle Polymarket ${dbEv.id} error:`, error.message);
+    return false;
+  }
+
+  console.log(`Auto-settled Polymarket [${dbEv.title}] -> outcome #${winnerIdx} (bets: ${data?.settled || 0})`);
+  return true;
+}
+
+function parseSharpScoreWinner(dbEv, scoreObj) {
+  if (!scoreObj || typeof scoreObj !== 'object') return null;
+
+  const st = String(scoreObj.status || scoreObj.state || '').toLowerCase();
+  const isCompleted =
+    scoreObj.completed === true ||
+    scoreObj.is_final === true ||
+    st.includes('final') ||
+    st.includes('finish') ||
+    st.includes('ended') ||
+    st.includes('closed') ||
+    st.includes('complete');
+
+  if (!isCompleted) return null;
+
+  let homeScore = Number(scoreObj.home_score ?? scoreObj.score_home ?? scoreObj.home?.score);
+  let awayScore = Number(scoreObj.away_score ?? scoreObj.score_away ?? scoreObj.away?.score);
+
+  if ((!Number.isFinite(homeScore) || !Number.isFinite(awayScore)) && Array.isArray(scoreObj.scores) && scoreObj.scores.length >= 2) {
+    const parsed = parseMatchTitle(dbEv.title);
+    if (parsed) {
+      const t1 = parsed.team1.toLowerCase();
+      const t2 = parsed.team2.toLowerCase();
+      for (const sItem of scoreObj.scores) {
+        const name = String(sItem.name || sItem.team || '').toLowerCase();
+        const val = Number(sItem.score);
+        if (!Number.isFinite(val)) continue;
+        if (name.includes(t1) || t1.includes(name)) homeScore = val;
+        else if (name.includes(t2) || t2.includes(name)) awayScore = val;
+      }
+    }
+  }
+
+  if (!Number.isFinite(homeScore) || !Number.isFinite(awayScore)) return null;
+
+  const outcomesCount = Array.isArray(dbEv.outcomes) ? dbEv.outcomes.length : 2;
+  const scoreStr = `${homeScore}:${awayScore}`;
+
+  if (homeScore > awayScore) return { winnerIndex: 0, score: scoreStr };
+  if (awayScore > homeScore) return { winnerIndex: outcomesCount === 3 ? 2 : 1, score: scoreStr };
+  // Ничья: если в линии есть исход Х (3 исхода), побеждает индекс 1; иначе возврат (-1)
+  return { winnerIndex: outcomesCount === 3 ? 1 : -1, score: scoreStr };
+}
+
+async function autoSettleFinishedEvents() {
+  const { data: openEvents, error } = await sb
+    .from('events')
+    .select('id, external_id, title, start_time, status, outcomes')
+    .neq('status', 'finished')
+    .lt('start_time', new Date().toISOString())
+    .limit(120);
+
+  if (error || !openEvents || openEvents.length === 0) return;
+
+  const pmEvents = openEvents.filter((e) => String(e.id).startsWith('pm_'));
+  const sharpEvents = openEvents.filter((e) => String(e.id).startsWith('ext_'));
+
+  let settledCount = 0;
+
+  // 1. Закрываем завершённые матчи Polymarket
+  for (const ev of pmEvents) {
+    try {
+      const ok = await settlePolymarketEvent(ev);
+      if (ok) settledCount++;
+    } catch (err) {
+      console.warn(`Polymarket check ${ev.id} warn:`, err.message);
+    }
+    await sleep(120);
+  }
+
+  // 2. Закрываем завершённые матчи SharpAPI
+  if (SHARPAPI_KEY && sharpEvents.length > 0) {
+    const scoresMap = new Map();
+    try {
+      const rawScores = await fetchSharp('/scores?daysFrom=2&limit=500');
+      for (const sc of extractArray(rawScores)) {
+        const id = String(sc.event_id ?? sc.id ?? '');
+        if (id) scoresMap.set(id, sc);
+      }
+    } catch (err) {
+      console.warn('SharpAPI /scores warn:', err.message);
+    }
+
+    for (const ev of sharpEvents) {
+      try {
+        const extId = String(ev.external_id || ev.id.replace(/^ext_/, ''));
+        let scoreObj = scoresMap.get(extId);
+
+        if (!scoreObj) {
+          try {
+            const single = await fetchSharp(`/events/${extId}`);
+            scoreObj = single?.data || single;
+          } catch {}
+          await sleep(100);
+        }
+
+        const verdict = parseSharpScoreWinner(ev, scoreObj);
+        if (!verdict) continue;
+
+        const { data, error: settleErr } = await sb.rpc('admin_settle_event', {
+          p_event_id: ev.id,
+          p_winner_index: verdict.winnerIndex,
+          p_score: verdict.score
+        });
+
+        if (!settleErr) {
+          settledCount++;
+          console.log(`Auto-settled SharpAPI [${ev.title}] (${verdict.score}) -> outcome #${verdict.winnerIndex} (bets: ${data?.settled || 0})`);
+        }
+      } catch (err) {
+        console.warn(`SharpAPI settle ${ev.id} warn:`, err.message);
+      }
+    }
+  }
+
+  if (settledCount > 0) {
+    console.log(`Auto-settle completed: closed ${settledCount} finished matches.`);
+  }
+}
+
 (async function main() {
   try {
+    // Сначала рассчитываем уже завершившиеся матчи
+    await autoSettleFinishedEvents();
+
+    // Затем подтягиваем свежие коэффициенты и новые матчи
     const esportsMatches = await fetchPolymarketEsports();
     const classicMatches = await fetchSharpClassicSports();
 
