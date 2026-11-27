@@ -55,6 +55,8 @@
     --green-soft: rgba(0, 200, 117, 0.14);
     --red: #ff4757;
     --red-soft: rgba(255, 71, 87, 0.15);
+    --blue: #2563eb;
+    --blue-hover: #1d4ed8;
     --radius: 14px;
     --nav-safe-bottom: max(env(safe-area-inset-bottom, 0px), 46px);
   }
@@ -85,7 +87,7 @@
     ::-webkit-scrollbar-thumb:hover { background: #363c50; }
   }
 
-  /* AUTH GATE SCREEN */
+  /* AUTH & BAN & RULES GATE SCREENS */
   .auth-gate {
     position: fixed;
     inset: 0;
@@ -99,7 +101,7 @@
   }
   .auth-card {
     width: 100%;
-    max-width: 390px;
+    max-width: 400px;
     background: var(--surface-1);
     border: 1px solid var(--border-strong);
     border-radius: 22px;
@@ -125,6 +127,81 @@
   }
   .w-bet { color: var(--yellow); }
   .w-love { color: var(--red); }
+
+  .btn-blue-rules {
+    width: 100%;
+    background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
+    color: #ffffff;
+    border: 1px solid rgba(96, 165, 250, 0.45);
+    border-radius: 11px;
+    padding: 10px 14px;
+    font-size: 13px;
+    font-weight: 800;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 7px;
+    box-shadow: 0 6px 20px rgba(37, 99, 235, 0.35);
+    margin-bottom: 10px;
+  }
+  .btn-blue-rules:hover { filter: brightness(1.08); }
+
+  .rules-check-row {
+    display: flex;
+    align-items: flex-start;
+    gap: 9px;
+    background: var(--surface-2);
+    border: 1px solid var(--border-strong);
+    border-radius: 11px;
+    padding: 10px 11px;
+    margin-bottom: 12px;
+    cursor: pointer;
+    font-size: 12px;
+    color: var(--text);
+    line-height: 1.4;
+  }
+  .rules-check-row input {
+    margin-top: 2px;
+    width: 16px;
+    height: 16px;
+    accent-color: #2563eb;
+    flex-shrink: 0;
+    cursor: pointer;
+  }
+
+  /* RULES DOCUMENT STYLING */
+  .rule-block {
+    background: var(--surface-2);
+    border: 1px solid var(--border-strong);
+    border-radius: 12px;
+    padding: 12px 13px;
+    margin-bottom: 9px;
+  }
+  .rule-block-head {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    font-size: 13px;
+    font-weight: 800;
+    color: #fff;
+    margin-bottom: 4px;
+  }
+  .rule-block-text {
+    font-size: 12px;
+    color: var(--text-dim);
+    line-height: 1.48;
+  }
+  .rule-warn-box {
+    background: rgba(255, 71, 87, 0.1);
+    border: 1px solid rgba(255, 71, 87, 0.35);
+    border-radius: 12px;
+    padding: 11px 13px;
+    font-size: 12px;
+    color: #fca5a5;
+    line-height: 1.45;
+    margin-bottom: 12px;
+  }
 
   /* BET PLACED CONFIRMATION OVERLAY */
   .bet-anim-overlay {
@@ -747,7 +824,7 @@
     flex-wrap: wrap;
   }
 
-  /* PROMO ADMIN LIST */
+  /* PROMO & USER MODERATION LIST */
   .promo-admin-grid {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
@@ -764,6 +841,32 @@
     border-radius: 10px;
     padding: 9px 11px;
     font-size: 12.5px;
+    flex-wrap: wrap;
+  }
+
+  /* PAGINATION BAR */
+  .pagination-bar {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 5px;
+    justify-content: center;
+    margin-top: 12px;
+  }
+  .page-btn {
+    min-width: 30px;
+    height: 30px;
+    border-radius: 8px;
+    border: 1px solid var(--border-strong);
+    background: var(--surface-2);
+    color: var(--text);
+    font-size: 12px;
+    font-weight: 800;
+    cursor: pointer;
+  }
+  .page-btn.active {
+    background: var(--yellow);
+    color: #0b0c10;
+    border-color: var(--yellow);
   }
 
   /* ADAPTIVE COUPON */
@@ -864,6 +967,8 @@
   .sheet-backdrop.open { display: flex; }
   #createSheetBackdrop { z-index: 105; }
   #promoInfoSheetBackdrop { z-index: 130; }
+  #rulesSheetBackdrop { z-index: 9800; }
+  #fullLeaderboardBackdrop { z-index: 120; }
 
   .sheet {
     width: 100%;
@@ -928,6 +1033,7 @@
   .btn:disabled { opacity: 0.45; cursor: not-allowed; }
   .btn-primary { background: var(--green); color: #04160e; }
   .btn-gold { background: var(--yellow); color: #0b0c10; }
+  .btn-blue { background: var(--blue); color: #fff; }
   .btn-secondary { background: var(--surface-3); color: var(--text); border: 1px solid var(--border); }
   .btn-danger { background: var(--red-soft); color: var(--red); border: 1px solid rgba(255, 71, 87, 0.3); }
   .btn-sm { padding: 6px 10px; font-size: 11px; border-radius: 8px; }
@@ -991,7 +1097,7 @@
     border-radius: 999px;
     font-size: 12px;
     font-weight: 700;
-    z-index: 300;
+    z-index: 9999;
     opacity: 0;
     pointer-events: none;
     transition: all 0.2s ease;
@@ -1008,7 +1114,7 @@
 </head>
 <body>
 
-<!-- AUTH GATE (CLOUD LOGIN / SIGNUP BY NICKNAME) -->
+<!-- AUTH GATE (CLOUD LOGIN / SIGNUP + MANDATORY RULES) -->
 <div id="authGate" class="auth-gate">
   <div class="auth-card">
     <div class="auth-logo-wrap">
@@ -1022,7 +1128,7 @@
         <span class="w-bet">Bet</span><span class="w-love">Love</span>
       </div>
     </div>
-    <div style="text-align:center;font-size:12px;color:var(--text-dim);margin-bottom:16px;">
+    <div style="text-align:center;font-size:12px;color:var(--text-dim);margin-bottom:14px;">
       Облачный профиль • Баланс и ставки защищены сервером
     </div>
 
@@ -1041,8 +1147,65 @@
       <input id="authPassword" type="password" class="input" placeholder="••••••" autocomplete="current-password">
     </div>
 
-    <button id="authSubmitBtn" class="btn btn-gold btn-full" style="margin-top:4px;" onclick="submitCloudAuth()">Войти в аккаунт</button>
+    <button type="button" class="btn-blue-rules" onclick="openRulesModal(false)">
+      📜 Правила проекта BetLove
+    </button>
+
+    <label class="rules-check-row" id="authRulesCheckWrap">
+      <input type="checkbox" id="authRulesCheckbox" onchange="onRulesCheckboxChange()">
+      <span>
+        Я прочитал и принимаю <strong>Правила BetLove</strong>: подтверждаю, что это мой первый и единственный аккаунт, а никнейм не содержит оскорблений.
+      </span>
+    </label>
+
+    <button id="authSubmitBtn" class="btn btn-gold btn-full" onclick="submitCloudAuth()">Войти в аккаунт</button>
     <div id="authErrorMsg" style="font-size:11.5px;color:var(--red);text-align:center;margin-top:10px;min-height:16px;"></div>
+  </div>
+</div>
+
+<!-- MANDATORY RULES GATE FOR EXISTING USERS WHO HAVEN'T ACCEPTED YET -->
+<div id="rulesGate" class="auth-gate hidden">
+  <div class="auth-card" style="max-width:440px;">
+    <div style="text-align:center;margin-bottom:10px;">
+      <div style="font-size:28px;margin-bottom:4px;">📜</div>
+      <div style="font-size:18px;font-weight:900;color:#fff;">Принятие правил BetLove</div>
+      <div style="font-size:12px;color:var(--text-dim);margin-top:3px;">
+        Для продолжения игры необходимо ознакомиться и согласиться с правилами платформы.
+      </div>
+    </div>
+
+    <button type="button" class="btn-blue-rules" onclick="openRulesModal(false)">
+      📖 Открыть полный текст правил
+    </button>
+
+    <label class="rules-check-row">
+      <input type="checkbox" id="gateRulesCheckbox">
+      <span>
+        Я принимаю правила BetLove, обязуюсь не создавать твинк-аккаунты, не использовать баги и сообщать об ошибках в Telegram <strong>@debokiyy</strong>.
+      </span>
+    </label>
+
+    <button class="btn btn-primary btn-full" style="margin-bottom:8px;" onclick="confirmExistingUserRules()">✅ Принять и продолжить</button>
+    <button class="btn btn-danger btn-sm btn-full" onclick="logoutCloudUser()">Не принимаю • Выйти из аккаунта</button>
+  </div>
+</div>
+
+<!-- BANNED ACCOUNT SCREEN -->
+<div id="bannedGate" class="auth-gate hidden">
+  <div class="auth-card" style="border-color:rgba(255,71,87,0.5);text-align:center;">
+    <div style="font-size:40px;margin-bottom:8px;">🚫</div>
+    <div style="font-size:20px;font-weight:900;color:var(--red);margin-bottom:6px;">Аккаунт заблокирован</div>
+    <div style="font-size:12.5px;color:var(--text-dim);margin-bottom:12px;">
+      Доступ к платформе BetLove ограничен администрацией за нарушение правил.
+    </div>
+    <div style="background:var(--surface-2);border:1px solid rgba(255,71,87,0.35);border-radius:12px;padding:12px;margin-bottom:14px;">
+      <div style="font-size:11px;color:var(--text-dim);margin-bottom:3px;">Причина блокировки:</div>
+      <div style="font-size:13.5px;font-weight:800;color:#fff;" id="banReasonDisplay">Нарушение правил проекта</div>
+    </div>
+    <div style="font-size:12px;color:var(--text-dim);margin-bottom:14px;">
+      Если считаешь блокировку ошибочной, напиши в Telegram: <strong style="color:var(--yellow);">@debokiyy</strong>
+    </div>
+    <button class="btn btn-secondary btn-full" onclick="logoutCloudUser()">Выйти из аккаунта</button>
   </div>
 </div>
 
@@ -1431,23 +1594,47 @@
         </div>
       </div>
 
+      <!-- TOP 5 PREVIEW + BUTTON TO OPEN FULL TOP-100 -->
       <div class="panel">
         <div class="panel-title">
-          <span>🏆 Глобальный топ игроков</span>
-          <button class="btn btn-secondary btn-sm" onclick="loadLeaderboard()">↻ Обновить</button>
+          <span>🏆 Топ-5 игроков</span>
+          <div style="display:flex;gap:6px;">
+            <button class="btn btn-secondary btn-sm" onclick="loadLeaderboard()">↻</button>
+            <button class="btn btn-gold btn-sm" onclick="openFullLeaderboard()">Весь Топ-100 →</button>
+          </div>
         </div>
-        <div class="panel-sub">Общий рейтинг всех зарегистрированных игроков по балансу BC.</div>
-        <div id="leaderboardContainer"></div>
+        <div class="panel-sub">Лидеры по балансу BC. Нажми «Весь Топ-100», чтобы открыть 10 страниц рейтинга.</div>
+        <div id="leaderboardTop5Container"></div>
+      </div>
+
+      <!-- ADMIN ONLY: USER MODERATION (BAN / RESET BALANCE / DELETE ACCOUNT) -->
+      <div id="adminUsersModBox" class="panel hidden" style="border-color: rgba(255, 71, 87, 0.35);">
+        <div class="panel-title">
+          <span style="color:var(--red);">🛡 Админ: модерация игроков</span>
+          <button class="btn btn-secondary btn-sm" onclick="loadAdminUsers()">↻ Обновить</button>
+        </div>
+        <div class="panel-sub">Блокировка за ники/нарушения, обнуление баланса за багоюз и полное удаление аккаунтов.</div>
+
+        <div class="row-2" style="margin-bottom:10px;">
+          <input id="adminUserSearchInput" class="input" placeholder="Поиск игрока по нику..." oninput="loadAdminUsers()">
+          <button class="btn btn-secondary" onclick="loadAdminUsers()">🔍 Найти</button>
+        </div>
+
+        <div id="adminUsersList" style="display:flex;flex-direction:column;gap:8px;max-height:380px;overflow-y:auto;"></div>
       </div>
 
       <div class="panel">
         <div class="panel-title">
-          <span>👤 Профиль и доступ</span>
+          <span>👤 Профиль и правила</span>
           <span class="fb-badge" id="profileRoleBadge">Игрок</span>
         </div>
         <div style="font-size:12.5px;color:var(--text-dim);margin-bottom:10px;">
           Аккаунт: <strong style="color:#fff;" id="profileUsernameText">@user</strong>
         </div>
+
+        <button type="button" class="btn-blue-rules" onclick="openRulesModal(true)">
+          📜 Правила проекта BetLove
+        </button>
 
         <div id="adminClaimBox" class="field">
           <label class="label">Активация прав администратора (только для создателя)</label>
@@ -1553,6 +1740,64 @@
     <span>Топ</span>
   </button>
 </nav>
+
+<!-- RULES MODAL (FORMATTED OFFICIAL RULES) -->
+<div id="rulesSheetBackdrop" class="sheet-backdrop" onclick="closeSheetOnBackdrop(event, 'rulesSheetBackdrop')">
+  <div class="sheet">
+    <div class="sheet-handle"></div>
+    <div class="panel-title" style="margin-bottom:10px;">
+      <span style="display:flex;align-items:center;gap:7px;">
+        <span style="background:#2563eb;color:#fff;padding:2px 7px;border-radius:6px;font-size:11px;">ПРАВИЛА</span>
+        <span>Свод правил BetLove</span>
+      </span>
+      <button class="btn btn-secondary btn-sm" onclick="closeSheet('rulesSheetBackdrop')">✕</button>
+    </div>
+
+    <div class="rule-block">
+      <div class="rule-block-head">1️⃣ Один игрок — один аккаунт</div>
+      <div class="rule-block-text">
+        Регистрируя профиль, ты подтверждаешь, что это твой <strong>первый и единственный аккаунт</strong> на платформе BetLove. Создание мультиаккаунтов (твинков) для повторного получения стартового банка, промокодов, ежедневного стрика или вращений колеса строго запрещено и ведёт к перманентной блокировке всех связанных профилей.
+      </div>
+    </div>
+
+    <div class="rule-block">
+      <div class="rule-block-head">2️⃣ Требования к никнейму и поведению</div>
+      <div class="rule-block-text">
+        Запрещены никнеймы, содержащие <strong>мат и нецензурную лексику, контент 18+, оскорбления игроков, разжигание ненависти или осуждение/оскорбление религий, наций и убеждений</strong>. Нарушающие никнеймы блокируются администрацией без предупреждения.
+      </div>
+    </div>
+
+    <div class="rule-block">
+      <div class="rule-block-head">3️⃣ Запрет багоюза и обязанность сообщать об ошибках</div>
+      <div class="rule-block-text">
+        Категорически запрещено использовать любые баги, уязвимости коэффициентов, ошибки расчёта ставок или таймеров. При обнаружении любого бага ты <strong>обязан незамедлительно сообщить в Telegram: <span style="color:var(--yellow);">@debokiyy</span></strong>.
+      </div>
+    </div>
+
+    <div class="rule-warn-box">
+      ⚠️ <strong>Санкции за нарушения:</strong> если игрок будет замечен в багоюзе, накрутке или нарушении правил — администрация вправе <strong>полностью снять (обнулить) баланс</strong> аккаунта или заблокировать профиль без возможности восстановления.
+    </div>
+
+    <button id="rulesModalAcceptBtn" class="btn btn-blue btn-full" onclick="acceptRulesFromModal()">
+      ✅ Я ознакомился и принимаю правила
+    </button>
+  </div>
+</div>
+
+<!-- FULL TOP-100 LEADERBOARD MODAL (10 PAGES x 10 PLAYERS) -->
+<div id="fullLeaderboardBackdrop" class="sheet-backdrop" onclick="closeSheetOnBackdrop(event, 'fullLeaderboardBackdrop')">
+  <div class="sheet">
+    <div class="sheet-handle"></div>
+    <div class="panel-title" style="margin-bottom:6px;">
+      <span>🏆 Глобальный Топ-100 игроков</span>
+      <button class="btn btn-secondary btn-sm" onclick="closeSheet('fullLeaderboardBackdrop')">✕</button>
+    </div>
+    <div class="panel-sub" id="lbPageSubtitle">Страница 1 из 10 • Места 1–10</div>
+
+    <div id="fullLeaderboardList"></div>
+    <div class="pagination-bar" id="lbPaginationBar"></div>
+  </div>
+</div>
 
 <!-- HOW TO GET PROMO MODAL -->
 <div id="promoInfoSheetBackdrop" class="sheet-backdrop" onclick="closeSheetOnBackdrop(event, 'promoInfoSheetBackdrop')">
@@ -1690,7 +1935,6 @@ const NARDY_TOTAL_LINES = [
   { line: 9.5, underOdd: 1.14, overOdd: 5.7 }
 ];
 
-// 8 секторов колеса фортуны (4x100, 2x250, 1x500, 1x1500)
 const WHEEL_SECTORS = [
   { label: '100', color: '#1e2433', textColor: '#f5f7fa' },
   { label: '250', color: '#0e7490', textColor: '#ffffff' },
@@ -1707,6 +1951,7 @@ let userProfile = null;
 let cloudEvents = [];
 let cloudBets = [];
 let leaderboardList = [];
+let lbCurrentPage = 1;
 let coupon = [];
 let collapsedTournaments = {};
 
@@ -1720,16 +1965,14 @@ let lineSearchQuery = '';
 let activeSheetEventId = null;
 let couponWallet = 'bc';
 let authMode = 'login';
+let isRulesReadOnlyModal = false;
 
-// Wheel animation state
 let wheelCurrentRotation = 0;
 let isWheelSpinning = false;
 
-// Bookmaker source filtering state
 let adminSourceView = localStorage.getItem('betlove_admin_view_src') || 'all';
 let globalVisibleBookmakers = { polymarket: true, sharpapi: true, manual: true };
 
-// Nardy state
 let nardyChip = 100;
 let nardyPicks = [];
 let nardyLastRoundPicks = [];
@@ -1748,7 +1991,7 @@ function showToast(msg) {
   el.textContent = msg;
   el.classList.add('show');
   clearTimeout(window._toastTimer);
-  window._toastTimer = setTimeout(() => el.classList.remove('show'), 2600);
+  window._toastTimer = setTimeout(() => el.classList.remove('show'), 2700);
 }
 
 function formatCoins(val) { return Number(val || 0).toFixed(3); }
@@ -1760,6 +2003,57 @@ function formatCooldownLeft(msLeft) {
   const h = Math.floor(totalMin / 60);
   const m = totalMin % 60;
   return h > 0 ? `${h}ч ${m}м` : `${m}м`;
+}
+
+/* ================= RULES MODAL & ACCEPTANCE ================= */
+
+function openRulesModal(readOnly = false) {
+  isRulesReadOnlyModal = readOnly;
+  const btn = document.getElementById('rulesModalAcceptBtn');
+  if (btn) {
+    btn.textContent = readOnly ? 'Понятно' : '✅ Я ознакомился и принимаю правила';
+  }
+  document.getElementById('rulesSheetBackdrop').classList.add('open');
+}
+
+function acceptRulesFromModal() {
+  if (!isRulesReadOnlyModal) {
+    const authCb = document.getElementById('authRulesCheckbox');
+    const gateCb = document.getElementById('gateRulesCheckbox');
+    if (authCb) authCb.checked = true;
+    if (gateCb) gateCb.checked = true;
+    onRulesCheckboxChange();
+    showToast('✅ Правила приняты');
+  }
+  closeSheet('rulesSheetBackdrop');
+}
+
+function onRulesCheckboxChange() {
+  const accepted = !!document.getElementById('authRulesCheckbox')?.checked;
+  if (accepted) {
+    localStorage.setItem('betlove_rules_accepted', '1');
+  } else {
+    localStorage.removeItem('betlove_rules_accepted');
+  }
+}
+
+async function confirmExistingUserRules() {
+  const cb = document.getElementById('gateRulesCheckbox');
+  if (!cb || !cb.checked) {
+    showToast('⚠️ Поставь галочку, что принимаешь правила BetLove');
+    return;
+  }
+
+  const { error } = await sb.rpc('accept_user_rules');
+  if (error) {
+    showToast('❌ ' + error.message);
+    return;
+  }
+
+  localStorage.setItem('betlove_rules_accepted', '1');
+  document.getElementById('rulesGate').classList.add('hidden');
+  await syncAllCloudData(false);
+  showToast('✅ Правила приняты! Приятной игры');
 }
 
 /* ================= BOOKMAKER SOURCE SETTINGS ================= */
@@ -1833,7 +2127,7 @@ function isEventAllowedByBookmaker(ev, isAdmin) {
   return globalVisibleBookmakers[src] !== false;
 }
 
-/* ================= CLOUD AUTH (NICKNAME + PASSWORD) ================= */
+/* ================= CLOUD AUTH (NICKNAME + PASSWORD + RULES CHECK) ================= */
 
 function setAuthMode(mode) {
   authMode = mode;
@@ -1841,6 +2135,14 @@ function setAuthMode(mode) {
   document.getElementById('authTabSignup').classList.toggle('active', mode === 'signup');
   document.getElementById('authSubmitBtn').textContent = mode === 'login' ? 'Войти в аккаунт' : 'Создать аккаунт (1000 BC)';
   document.getElementById('authErrorMsg').textContent = '';
+
+  const checkWrap = document.getElementById('authRulesCheckWrap');
+  const prevAccepted = localStorage.getItem('betlove_rules_accepted') === '1';
+  if (mode === 'signup') {
+    checkWrap.classList.remove('hidden');
+  } else {
+    checkWrap.classList.toggle('hidden', prevAccepted);
+  }
 }
 
 function usernameToEmail(nick) {
@@ -1853,6 +2155,7 @@ async function submitCloudAuth() {
   const password = document.getElementById('authPassword').value;
   const errBox = document.getElementById('authErrorMsg');
   const btn = document.getElementById('authSubmitBtn');
+  const rulesAccepted = !!document.getElementById('authRulesCheckbox')?.checked || localStorage.getItem('betlove_rules_accepted') === '1';
 
   const cleanNick = rawNick.toLowerCase().replace(/[^a-z0-9_]/g, '');
   if (cleanNick.length < 3) {
@@ -1861,6 +2164,15 @@ async function submitCloudAuth() {
   }
   if (password.length < 6) {
     errBox.textContent = 'Пароль должен быть не короче 6 символов';
+    return;
+  }
+  if (authMode === 'signup' && !document.getElementById('authRulesCheckbox')?.checked) {
+    errBox.textContent = 'Чтобы создать аккаунт, нужно прочитать и принять Правила BetLove';
+    return;
+  }
+  if (authMode === 'login' && !rulesAccepted) {
+    errBox.textContent = 'Примите правила BetLove, чтобы продолжить';
+    document.getElementById('authRulesCheckWrap').classList.remove('hidden');
     return;
   }
 
@@ -1878,6 +2190,8 @@ async function submitCloudAuth() {
       if (error) throw error;
       if (data.user) {
         currentUser = data.user;
+        localStorage.setItem('betlove_rules_accepted', '1');
+        await sb.rpc('accept_user_rules');
         await onUserAuthenticated();
         showToast(`🎉 Добро пожаловать, ${cleanNick}!`);
       }
@@ -1889,8 +2203,11 @@ async function submitCloudAuth() {
       if (error) throw error;
       if (data.user) {
         currentUser = data.user;
+        if (document.getElementById('authRulesCheckbox')?.checked) {
+          localStorage.setItem('betlove_rules_accepted', '1');
+          await sb.rpc('accept_user_rules');
+        }
         await onUserAuthenticated();
-        showToast(`👋 С возвращением, ${cleanNick}!`);
       }
     }
   } catch (err) {
@@ -1905,6 +2222,8 @@ async function logoutCloudUser() {
   currentUser = null;
   userProfile = null;
   coupon = [];
+  document.getElementById('bannedGate').classList.add('hidden');
+  document.getElementById('rulesGate').classList.add('hidden');
   document.getElementById('authGate').classList.remove('hidden');
 }
 
@@ -1930,6 +2249,23 @@ async function syncAllCloudData(notify = false) {
   if (evRes.data) cloudEvents = evRes.data;
   if (betsRes.data) cloudBets = betsRes.data;
 
+  // Проверка бана
+  if (userProfile?.is_banned) {
+    document.getElementById('banReasonDisplay').textContent = userProfile.ban_reason || 'Нарушение правил платформы';
+    document.getElementById('bannedGate').classList.remove('hidden');
+    return;
+  } else {
+    document.getElementById('bannedGate').classList.add('hidden');
+  }
+
+  // Проверка принятия правил (если заходил со старого аккаунта и ещё не принимал)
+  if (userProfile && userProfile.rules_accepted === false) {
+    document.getElementById('rulesGate').classList.remove('hidden');
+    return;
+  } else {
+    document.getElementById('rulesGate').classList.add('hidden');
+  }
+
   renderHeader();
   renderAdminVisibility();
   renderCouponUI();
@@ -1947,6 +2283,7 @@ function renderAdminVisibility() {
   document.getElementById('adminBookmakerBar').classList.toggle('hidden', !isAdmin);
   document.getElementById('adminClaimBox').classList.toggle('hidden', isAdmin);
   document.getElementById('devPromoGenBox').classList.toggle('hidden', !isAdmin);
+  document.getElementById('adminUsersModBox').classList.toggle('hidden', !isAdmin);
   document.getElementById('profileRoleBadge').textContent = isAdmin ? '👑 Администратор' : 'Игрок';
 }
 
@@ -1961,6 +2298,110 @@ async function claimAdminRights() {
   document.getElementById('adminSecretInput').value = '';
   await syncAllCloudData(false);
   showToast('👑 Права администратора активированы!');
+}
+
+/* ================= ADMIN USER MODERATION (BAN / RESET / DELETE) ================= */
+
+async function loadAdminUsers() {
+  const container = document.getElementById('adminUsersList');
+  if (!container || !userProfile?.is_admin) return;
+
+  const search = document.getElementById('adminUserSearchInput')?.value || '';
+  const { data, error } = await sb.rpc('admin_list_users', { p_search: search });
+
+  if (error || !data) {
+    container.innerHTML = `<div style="font-size:12px;color:var(--text-dim);">Не удалось загрузить игроков</div>`;
+    return;
+  }
+
+  if (data.length === 0) {
+    container.innerHTML = `<div style="font-size:12px;color:var(--text-dim);">Игроки не найдены</div>`;
+    return;
+  }
+
+  container.innerHTML = data.map((u) => {
+    const isMe = currentUser && u.id === currentUser.id;
+    const safeName = String(u.username || 'player').replace(/'/g, "\\'");
+    return `
+      <div class="promo-item-row" style="${u.is_banned ? 'border-color:rgba(255,71,87,0.45);background:rgba(255,71,87,0.06);' : ''}">
+        <div style="min-width:0;flex:1;">
+          <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
+            <strong style="color:#fff;">@${u.username}</strong>
+            ${u.is_admin ? '<span class="fb-badge">ADMIN</span>' : ''}
+            ${u.is_banned ? '<span class="live-badge-pill">ЗАБАНЕН</span>' : ''}
+          </div>
+          <div style="font-size:11px;color:var(--text-dim);margin-top:2px;" class="num">
+            Баланс: <strong style="color:var(--green);">${formatShort(u.balance)} BC</strong> • ФР: ${Math.round(u.freebet_balance || 0)}
+          </div>
+          ${u.is_banned && u.ban_reason ? `<div style="font-size:10.5px;color:var(--red);margin-top:2px;">Причина: ${u.ban_reason}</div>` : ''}
+        </div>
+
+        ${isMe ? '<span style="font-size:11px;color:var(--text-dim);">Это вы</span>' : `
+          <div style="display:flex;gap:4px;flex-wrap:wrap;">
+            <button class="btn btn-secondary btn-sm" onclick="adminZeroBalance('${u.id}', '${safeName}')" title="Снять весь баланс за багоюз">💸 Обнулить</button>
+            ${u.is_banned
+              ? `<button class="btn btn-primary btn-sm" onclick="adminToggleBan('${u.id}', '${safeName}', false)">✅ Разбан</button>`
+              : `<button class="btn btn-danger btn-sm" onclick="adminToggleBan('${u.id}', '${safeName}', true)">🚫 Бан</button>`
+            }
+            <button class="btn btn-danger btn-sm" onclick="adminDeleteAccount('${u.id}', '${safeName}')" title="Удалить аккаунт полностью">🗑</button>
+          </div>
+        `}
+      </div>
+    `;
+  }).join('');
+}
+
+async function adminToggleBan(targetId, username, shouldBan) {
+  let reason = '';
+  if (shouldBan) {
+    reason = prompt(`Укажи причину блокировки для @${username}:`, 'Нарушение правил BetLove (никнейм / мультиаккаунт / багоюз)');
+    if (reason === null) return;
+  } else {
+    if (!confirm(`Разблокировать аккаунт @${username}?`)) return;
+  }
+
+  const { data, error } = await sb.rpc('admin_ban_user', {
+    p_target_id: targetId,
+    p_ban: shouldBan,
+    p_reason: reason
+  });
+
+  if (error || !data?.ok) {
+    showToast('❌ ' + (data?.error || error?.message || 'Ошибка'));
+    return;
+  }
+
+  showToast(shouldBan ? `🚫 Игрок @${username} заблокирован` : `✅ Игрок @${username} разблокирован`);
+  loadAdminUsers();
+  loadLeaderboard();
+}
+
+async function adminZeroBalance(targetId, username) {
+  if (!confirm(`Обнулить весь баланс (BC и ФР) игроку @${username} за багоюз?`)) return;
+
+  const { data, error } = await sb.rpc('admin_reset_balance', { p_target_id: targetId });
+  if (error || !data?.ok) {
+    showToast('❌ ' + (data?.error || error?.message || 'Ошибка'));
+    return;
+  }
+
+  showToast(`💸 Баланс игрока @${username} обнулён`);
+  loadAdminUsers();
+  loadLeaderboard();
+}
+
+async function adminDeleteAccount(targetId, username) {
+  if (!confirm(`ВНИМАНИЕ! Полностью удалить аккаунт @${username} и все его ставки без возможности восстановления?`)) return;
+
+  const { data, error } = await sb.rpc('admin_delete_user', { p_target_id: targetId });
+  if (error || !data?.ok) {
+    showToast('❌ ' + (data?.error || error?.message || 'Ошибка'));
+    return;
+  }
+
+  showToast(`🗑 Аккаунт @${username} удалён`);
+  loadAdminUsers();
+  loadLeaderboard();
 }
 
 /* ================= DAILY STREAK (100 -> 200 -> 300 -> 400 -> 500 BC) ================= */
@@ -2047,7 +2488,7 @@ async function claimDailyStreak() {
   setTimeout(() => ov.classList.remove('active'), 2000);
 }
 
-/* ================= DAILY FORTUNE WHEEL (ANIMATED CANVAS) ================= */
+/* ================= DAILY FORTUNE WHEEL ================= */
 
 function drawFortuneWheel() {
   const canvas = document.getElementById('fortuneWheelCanvas');
@@ -2063,7 +2504,6 @@ function drawFortuneWheel() {
   ctx.clearRect(0, 0, size, size);
 
   for (let i = 0; i < count; i++) {
-    // Сектор 0 центрируем ровно под верхней стрелкой (-90 градусов)
     const startAngle = -Math.PI / 2 - arc / 2 + i * arc;
     const endAngle = startAngle + arc;
     const sec = WHEEL_SECTORS[i];
@@ -2079,7 +2519,6 @@ function drawFortuneWheel() {
     ctx.strokeStyle = 'rgba(255, 255, 255, 0.14)';
     ctx.stroke();
 
-    // Подпись номинала внутри сектора
     ctx.save();
     ctx.translate(cx, cy);
     ctx.rotate(startAngle + arc / 2);
@@ -2093,7 +2532,6 @@ function drawFortuneWheel() {
     ctx.restore();
   }
 
-  // Декоративные золотые заклёпки по краю обода
   for (let i = 0; i < count * 2; i++) {
     const a = (i * Math.PI) / count;
     const px = cx + Math.cos(a) * (r - 8);
@@ -2150,10 +2588,9 @@ async function spinFortuneWheel() {
   }
 
   const targetSector = Number(data.sector) || 0;
-  const sectorAngle = 360 / WHEEL_SECTORS.length; // 45 градусов
-  // Чтобы нужный сектор пришёл ровно под верхнюю стрелку (0 град), поворачиваем на (360 - targetSector * 45)
+  const sectorAngle = 360 / WHEEL_SECTORS.length;
   const targetOffset = (360 - targetSector * sectorAngle) % 360;
-  const jitter = (Math.random() - 0.5) * 24; // лёгкое смещение внутри сектора для реализма
+  const jitter = (Math.random() - 0.5) * 24;
   const currentMod = ((wheelCurrentRotation % 360) + 360) % 360;
   const delta = ((targetOffset - currentMod + 360) % 360) + 360 * 6 + jitter;
 
@@ -2163,7 +2600,6 @@ async function spinFortuneWheel() {
   canvas.style.transition = 'transform 4.6s cubic-bezier(0.12, 0.88, 0.22, 1)';
   canvas.style.transform = `rotate(${wheelCurrentRotation}deg)`;
 
-  // Тактильные щелчки язычка стрелки во время замедления
   let ticks = 0;
   const tickTimer = setInterval(() => {
     ticks++;
@@ -3149,7 +3585,7 @@ function renderNardyTab() {
   playBtn.textContent = isNardyRolling ? '🎲 Бросок...' : (nardyPicks.length > 0 ? `🎲 Бросить (${formatShort(totalStake)} BC)` : '🎲 Сделать прогноз');
 }
 
-/* ================= BETS & LEADERBOARD ================= */
+/* ================= BETS & LEADERBOARD (TOP-5 + TOP-100 PAGINATED) ================= */
 
 function setBetsSub(sub) {
   betsSub = sub;
@@ -3215,14 +3651,68 @@ function renderFarmTab() {
 async function loadLeaderboard() {
   const { data } = await sb
     .from('profiles')
-    .select('id, username, balance, total_turnover, win_streak')
+    .select('id, username, balance, total_turnover, win_streak, is_banned')
+    .eq('is_banned', false)
     .order('balance', { ascending: false })
-    .limit(25);
+    .limit(100);
 
   if (data) {
     leaderboardList = data;
     renderStatsTab();
+    if (document.getElementById('fullLeaderboardBackdrop').classList.contains('open')) {
+      renderFullLeaderboardPage(lbCurrentPage);
+    }
   }
+}
+
+function renderLbRowHtml(p, rank) {
+  const isMe = currentUser && p.id === currentUser.id;
+  const rankClass = rank === 1 ? 'top1' : rank === 2 ? 'top2' : rank === 3 ? 'top3' : '';
+  return `
+    <div class="lb-row ${isMe ? 'me' : ''}">
+      <div style="display:flex;align-items:center;gap:10px;min-width:0;">
+        <div class="lb-rank num ${rankClass}">${rank}</div>
+        <div style="min-width:0;">
+          <div style="font-size:13px;font-weight:800;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">
+            @${p.username} ${isMe ? '<span class="fb-badge">ВЫ</span>' : ''}
+          </div>
+          <div style="font-size:10.5px;color:var(--text-dim);" class="num">Оборот: ${Math.round(p.total_turnover || 0)} BC • Серия: ${p.win_streak || 0}🔥</div>
+        </div>
+      </div>
+      <div class="num" style="font-size:13.5px;font-weight:900;color:var(--green);flex-shrink:0;">
+        ${formatShort(p.balance)} BC
+      </div>
+    </div>
+  `;
+}
+
+function openFullLeaderboard() {
+  lbCurrentPage = 1;
+  renderFullLeaderboardPage(1);
+  document.getElementById('fullLeaderboardBackdrop').classList.add('open');
+}
+
+function renderFullLeaderboardPage(page) {
+  lbCurrentPage = page;
+  const perPage = 10;
+  const totalPages = 10;
+  const startIdx = (page - 1) * perPage;
+  const slice = leaderboardList.slice(startIdx, startIdx + perPage);
+
+  document.getElementById('lbPageSubtitle').textContent = `Страница ${page} из ${totalPages} • Места ${startIdx + 1}–${startIdx + perPage}`;
+
+  const listEl = document.getElementById('fullLeaderboardList');
+  if (slice.length === 0) {
+    listEl.innerHTML = `<div class="empty-box" style="padding:18px;"><div class="empty-desc">На этой странице пока нет игроков.</div></div>`;
+  } else {
+    listEl.innerHTML = slice.map((p, i) => renderLbRowHtml(p, startIdx + i + 1)).join('');
+  }
+
+  let pagHtml = '';
+  for (let p = 1; p <= totalPages; p++) {
+    pagHtml += `<button class="page-btn num ${p === page ? 'active' : ''}" onclick="renderFullLeaderboardPage(${p})">${p}</button>`;
+  }
+  document.getElementById('lbPaginationBar').innerHTML = pagHtml;
 }
 
 function renderStatsTab() {
@@ -3237,33 +3727,18 @@ function renderStatsTab() {
   document.getElementById('stTurnover').textContent = `${Math.round(userProfile.total_turnover || 0)} BC`;
   document.getElementById('profileUsernameText').textContent = `@${userProfile.username}`;
 
-  const lbBox = document.getElementById('leaderboardContainer');
+  const lbBox = document.getElementById('leaderboardTop5Container');
   if (leaderboardList.length === 0) {
     lbBox.innerHTML = `<div style="font-size:12px;color:var(--text-dim);">Загрузка рейтинга...</div>`;
     return;
   }
 
-  lbBox.innerHTML = leaderboardList.map((p, idx) => {
-    const rank = idx + 1;
-    const isMe = currentUser && p.id === currentUser.id;
-    const rankClass = rank === 1 ? 'top1' : rank === 2 ? 'top2' : rank === 3 ? 'top3' : '';
-    return `
-      <div class="lb-row ${isMe ? 'me' : ''}">
-        <div style="display:flex;align-items:center;gap:10px;min-width:0;">
-          <div class="lb-rank num ${rankClass}">${rank}</div>
-          <div style="min-width:0;">
-            <div style="font-size:13px;font-weight:800;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">
-              @${p.username} ${isMe ? '<span class="fb-badge">ВЫ</span>' : ''}
-            </div>
-            <div style="font-size:10.5px;color:var(--text-dim);" class="num">Оборот: ${Math.round(p.total_turnover || 0)} BC • Серия: ${p.win_streak || 0}🔥</div>
-          </div>
-        </div>
-        <div class="num" style="font-size:13.5px;font-weight:900;color:var(--green);flex-shrink:0;">
-          ${formatShort(p.balance)} BC
-        </div>
-      </div>
-    `;
-  }).join('');
+  const top5 = leaderboardList.slice(0, 5);
+  lbBox.innerHTML = top5.map((p, idx) => renderLbRowHtml(p, idx + 1)).join('');
+
+  if (userProfile.is_admin) {
+    loadAdminUsers();
+  }
 }
 
 /* ================= NAVIGATION & INIT ================= */
@@ -3297,6 +3772,12 @@ function closeSheetOnBackdrop(e, id) { if (e.target.id === id) closeSheet(id); }
 (async function initApp() {
   renderNardyTab();
   drawFortuneWheel();
+  if (localStorage.getItem('betlove_rules_accepted') === '1') {
+    const cb = document.getElementById('authRulesCheckbox');
+    if (cb) cb.checked = true;
+  }
+  setAuthMode('login');
+
   const { data } = await sb.auth.getSession();
   if (data && data.session && data.session.user) {
     currentUser = data.session.user;
