@@ -23,6 +23,7 @@ jobs:
       - name: Run sync script
         env:
           SHARPAPI_KEY: ${{ secrets.SHARPAPI_KEY }}
+          PANDASCORE_KEY: ${{ secrets.PANDASCORE_KEY }}
           SUPABASE_URL: https://gwluwyobukouxylviskn.supabase.co
           SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
         run: node sync.js
