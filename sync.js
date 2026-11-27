@@ -12,8 +12,8 @@ if (!SHARPAPI_KEY || !SUPABASE_SERVICE_KEY) {
 const sb = createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY);
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
-async function tryFetch(url) {
-  const res = await fetch(url, {
+async function fetchSharp(path) {
+  const res = await fetch(`https://api.sharpapi.io/api/v1${path}`, {
     headers: {
       'X-API-Key': SHARPAPI_KEY,
       Authorization: `Bearer ${SHARPAPI_KEY}`,
@@ -22,29 +22,42 @@ async function tryFetch(url) {
   });
   const text = await res.text();
   if (!res.ok) {
-    throw new Error(`HTTP ${res.status}: ${text.slice(0, 200)}`);
+    throw new Error(`HTTP ${res.status} on ${path}: ${text.slice(0, 200)}`);
   }
   return JSON.parse(text);
 }
 
+function extractArray(raw) {
+  if (Array.isArray(raw)) return raw;
+  if (!raw || typeof raw !== 'object') return [];
+  return raw.data || raw.events || raw.odds || raw.items || [];
+}
+
+function formatLeagueName(raw = '') {
+  return String(raw)
+    .replace(/_-_/g, ' — ')
+    .replace(/_/g, ' ')
+    .replace(/\b\w/g, (c) => c.toUpperCase())
+    .trim();
+}
+
 function mapCategory(sportName = '', leagueName = '') {
   const s = `${sportName} ${leagueName}`.toLowerCase();
-  if (s.includes('counter') || s.includes('cs2') || s.includes('cs:go')) return 'CS2';
+  if (s.includes('counter') || s.includes('cs2') || s.includes('cs:go') || s.includes('esport')) return 'CS2';
   if (s.includes('dota')) return 'Dota 2';
-  if (s.includes('football') || s.includes('soccer')) return 'Футбол';
-  if (s.includes('hockey')) return 'Хоккей';
-  if (s.includes('basket')) return 'Баскетбол';
-  if (s.includes('tennis')) return 'Теннис';
+  if (s.includes('football') || s.includes('soccer') || s.includes('copa') || s.includes('liga')) return 'Футбол';
+  if (s.includes('hockey') || s.includes('nhl') || s.includes('khl')) return 'Хоккей';
+  if (s.includes('basket') || s.includes('nba')) return 'Баскетбол';
+  if (s.includes('tennis') || s.includes('atp') || s.includes('wta')) return 'Теннис';
   if (s.includes('mma') || s.includes('ufc') || s.includes('box')) return 'MMA / Бокс';
   return 'Другое';
 }
 
 function inferFormat(category = '', tournamentName = '') {
   const t = String(tournamentName).toLowerCase();
-  if (t.includes('bo5') || t.includes('best of 5')) return 'BO5';
-  if (t.includes('bo1') || t.includes('best of 1')) return 'BO1';
-  if (t.includes('bo3') || t.includes('best of 3')) return 'BO3';
-
+  if (t.includes('bo5')) return 'BO5';
+  if (t.includes('bo1')) return 'BO1';
+  if (t.includes('bo3')) return 'BO3';
   if (category === 'CS2' || category === 'Dota 2') return 'BO3';
   if (category === 'Теннис') return 'Сеты';
   return 'Матч';
@@ -59,101 +72,151 @@ function toDecimalOdd(val) {
   return null;
 }
 
-function extractOutcomesFromEvent(ev) {
-  const prices = [];
-  const walk = (node) => {
-    if (!node || typeof node !== 'object') return;
-    if (Array.isArray(node)) {
-      for (const item of node) walk(item);
-      return;
-    }
-    for (const key of ['price', 'odds', 'decimal', 'decimal_odds', 'american_odds']) {
-      if (node[key] !== undefined && node.active !== false) {
-        const odd = toDecimalOdd(node[key]);
-        if (odd) prices.push(odd);
-      }
-    }
-    for (const v of Object.values(node)) {
-      if (v && typeof v === 'object') walk(v);
-    }
-  };
-  walk(ev);
-
-  if (prices.length >= 2) {
-    return [
-      { name: 'П1', odd: prices[0] },
-      { name: 'П2', odd: prices[1] }
-    ];
+function isMoneylineMarket(marketStr = '') {
+  const m = String(marketStr).toLowerCase();
+  if (!m) return true;
+  if (m.includes('spread') || m.includes('handicap') || m.includes('total') || m.includes('over') || m.includes('under')) {
+    return false;
   }
-  return null;
+  return m.includes('moneyline') || m.includes('h2h') || m.includes('winner') || m.includes('1x2') || m.includes('match');
 }
 
 async function syncUpcomingFixtures() {
-  const base = 'https://api.sharpapi.io/api/v1';
-  const candidateUrls = [
-    `${base}/odds/snapshot?limit=25`,
-    `${base}/odds/best?limit=25`,
-    `${base}/events?limit=25`
-  ];
+  // 1. Загружаем справочник событий с реальными именами команд и временем старта
+  const eventsMap = new Map();
+  try {
+    const rawEvents = await fetchSharp('/events?limit=100');
+    const evList = extractArray(rawEvents);
+    if (evList[0]) {
+      console.log('Sample /events item:', JSON.stringify(evList[0]).slice(0, 400));
+    }
+    for (const ev of evList) {
+      const id = String(ev.id ?? ev.event_id ?? '');
+      if (!id) continue;
+      eventsMap.set(id, {
+        home: ev.home_team || ev.home_name || ev.team_1 || ev.participant_1 || '',
+        away: ev.away_team || ev.away_name || ev.team_2 || ev.participant_2 || '',
+        sport: ev.sport || ev.sport_name || ev.sport_key || '',
+        league: ev.league || ev.league_name || ev.tournament || '',
+        start_time: ev.start_time || ev.commence_time || ev.starts_at || null
+      });
+    }
+    console.log(`Loaded ${eventsMap.size} events metadata from /events.`);
+  } catch (err) {
+    console.warn('Could not load /events:', err.message);
+  }
 
-  let rawData = null;
-  let workingUrl = '';
+  await sleep(350);
 
-  for (const url of candidateUrls) {
+  // 2. Загружаем котировки
+  let rawOdds = null;
+  for (const endpoint of ['/odds/best?limit=100', '/odds/snapshot?limit=100']) {
     try {
-      rawData = await tryFetch(url);
-      workingUrl = url;
-      console.log(`Working endpoint found: ${workingUrl}`);
+      rawOdds = await fetchSharp(endpoint);
+      console.log(`Loaded odds from ${endpoint}`);
       break;
     } catch (err) {
-      console.log(`Probe ${url} -> ${err.message}`);
+      console.warn(`Skip ${endpoint}: ${err.message}`);
     }
-    await sleep(300);
   }
 
-  if (!rawData) {
-    throw new Error('None of the candidate SharpAPI endpoints responded with 200 OK.');
+  if (!rawOdds) throw new Error('Failed to fetch odds from SharpAPI');
+
+  const oddsList = extractArray(rawOdds);
+  if (oddsList[0]) {
+    console.log('Sample odds item:', JSON.stringify(oddsList[0]).slice(0, 500));
   }
 
-  console.log('Sample response:', JSON.stringify(rawData).slice(0, 800));
+  // Группируем исходы по event_id, разделяя П1 (home) и П2 (away)
+  const grouped = new Map();
 
-  const list = Array.isArray(rawData)
-    ? rawData
-    : Array.isArray(rawData.data)
-      ? rawData.data
-      : Array.isArray(rawData.events)
-        ? rawData.events
-        : Array.isArray(rawData.items)
-          ? rawData.items
-          : [];
+  for (const item of oddsList) {
+    const evId = String(item.event_id ?? item.id ?? '');
+    if (!evId) continue;
 
-  if (list.length === 0) {
-    console.log('Response did not contain an event array directly.');
-    return;
+    const meta = eventsMap.get(evId) || {};
+    const homeName = item.home_team || meta.home || '';
+    const awayName = item.away_team || meta.away || '';
+    const marketName = item.market_type || item.market || item.market_key || '';
+
+    if (!isMoneylineMarket(marketName)) continue;
+
+    if (!grouped.has(evId)) {
+      grouped.set(evId, {
+        homeName,
+        awayName,
+        sport: item.sport || meta.sport || '',
+        league: item.league || meta.league || '',
+        start_time: item.start_time || meta.start_time || null,
+        p1: null,
+        p2: null,
+        draw: null
+      });
+    }
+    const entry = grouped.get(evId);
+    if (!entry.homeName && homeName) entry.homeName = homeName;
+    if (!entry.awayName && awayName) entry.awayName = awayName;
+
+    // Вариант A: плоская запись (одна строка = один исход)
+    const oddVal = toDecimalOdd(item.price ?? item.odds ?? item.decimal_odds ?? item.american_odds);
+    const side = String(item.side ?? item.selection ?? item.outcome ?? item.outcome_name ?? '').toLowerCase();
+
+    if (oddVal && side) {
+      if (side === 'home' || side === '1' || (entry.homeName && side === entry.homeName.toLowerCase())) {
+        if (!entry.p1) entry.p1 = oddVal;
+      } else if (side === 'away' || side === '2' || (entry.awayName && side === entry.awayName.toLowerCase())) {
+        if (!entry.p2) entry.p2 = oddVal;
+      } else if (side === 'draw' || side === 'x' || side === 'tie') {
+        if (!entry.draw) entry.draw = oddVal;
+      }
+    }
+
+    // Вариант B: вложенные поля home_odds / away_odds или массив outcomes у одного букмекера
+    const hOdd = toDecimalOdd(item.home_odds ?? item.home_price ?? item.p1);
+    const aOdd = toDecimalOdd(item.away_odds ?? item.away_price ?? item.p2);
+    const dOdd = toDecimalOdd(item.draw_odds ?? item.draw_price);
+    if (hOdd && aOdd) {
+      entry.p1 = hOdd;
+      entry.p2 = aOdd;
+      if (dOdd) entry.draw = dOdd;
+    }
+
+    if (Array.isArray(item.outcomes) && item.outcomes.length >= 2) {
+      for (const o of item.outcomes) {
+        const oPrice = toDecimalOdd(o.price ?? o.odds ?? o.decimal);
+        const oSide = String(o.side ?? o.name ?? o.label ?? '').toLowerCase();
+        if (!oPrice) continue;
+        if (oSide === 'home' || oSide === '1' || (entry.homeName && oSide === entry.homeName.toLowerCase())) {
+          entry.p1 = oPrice;
+        } else if (oSide === 'away' || oSide === '2' || (entry.awayName && oSide === entry.awayName.toLowerCase())) {
+          entry.p2 = oPrice;
+        } else if (oSide === 'draw' || oSide === 'x') {
+          entry.draw = oPrice;
+        }
+      }
+    }
   }
 
   const payload = [];
-  for (const ev of list.slice(0, 20)) {
-    const outcomes = extractOutcomesFromEvent(ev);
-    if (!outcomes) continue;
+  for (const [evId, g] of grouped.entries()) {
+    if (!g.p1 || !g.p2) continue;
+    // Пропускаем события без реальных имён команд, чтобы не плодить "Команда 1 vs Команда 2"
+    if (!g.homeName || !g.awayName) continue;
 
-    const extId = String(ev.id ?? ev.event_id ?? ev.game_id ?? '');
-    if (!extId) continue;
-
-    const p1 = ev.home_team || ev.home_name || ev.team_1 || ev.participant_1 || 'Команда 1';
-    const p2 = ev.away_team || ev.away_name || ev.team_2 || ev.participant_2 || 'Команда 2';
-    const sportName = ev.sport || ev.sport_name || ev.sport_key || '';
-    const tournament = ev.league || ev.league_name || ev.tournament || sportName || 'Турнир';
-    const category = mapCategory(sportName, tournament);
+    const tournament = formatLeagueName(g.league || g.sport || 'Турнир');
+    const category = mapCategory(g.sport, g.league);
+    const outcomes = [{ name: 'П1', odd: g.p1 }];
+    if (g.draw) outcomes.push({ name: 'Х', odd: g.draw });
+    outcomes.push({ name: 'П2', odd: g.p2 });
 
     payload.push({
-      id: 'ext_' + extId.replace(/[^a-zA-Z0-9_-]/g, '_'),
-      external_id: extId,
-      title: `${p1} vs ${p2}`,
+      id: 'ext_' + evId.replace(/[^a-zA-Z0-9_-]/g, '_'),
+      external_id: evId,
+      title: `${g.homeName} vs ${g.awayName}`,
       category,
       tournament,
       format: inferFormat(category, tournament),
-      start_time: ev.start_time || ev.commence_time || ev.starts_at || new Date(Date.now() + 3600000).toISOString(),
+      start_time: g.start_time || new Date(Date.now() + 3600000).toISOString(),
       status: 'prematch',
       outcomes,
       extra_markets: []
@@ -161,15 +224,15 @@ async function syncUpcomingFixtures() {
   }
 
   if (payload.length === 0) {
-    console.log('No events with real odds extracted yet — check Sample response in logs.');
+    console.log('No matched events with both team names and valid P1/P2 odds — check Sample logs above.');
     return;
   }
 
-  const { error } = await sb.rpc('admin_upsert_events', { p_events: payload });
+  const { error } = await sb.rpc('admin_upsert_events', { p_events: payload.slice(0, 30) });
   if (error) {
     throw new Error('Supabase admin_upsert_events error: ' + error.message);
   }
-  console.log(`Synced ${payload.length} upcoming fixtures with real odds from SharpAPI.`);
+  console.log(`Synced ${Math.min(payload.length, 30)} matches with real team names and P1/P2 odds.`);
 }
 
 (async function main() {
