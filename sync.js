@@ -30,7 +30,7 @@ async function fetchSharp(path) {
 function extractArray(raw) {
   if (Array.isArray(raw)) return raw;
   if (!raw || typeof raw !== 'object') return [];
-  return raw.data || raw.events || raw.odds || raw.items || [];
+  return raw.data || raw.events || raw.odds || raw.sports || raw.items || [];
 }
 
 function formatLeagueName(raw = '') {
@@ -43,7 +43,7 @@ function formatLeagueName(raw = '') {
 
 function mapCategory(sportName = '', leagueName = '') {
   const s = `${sportName} ${leagueName}`.toLowerCase();
-  if (s.includes('counter') || s.includes('cs2') || s.includes('cs:go') || s.includes('esport')) return 'CS2';
+  if (s.includes('counter') || s.includes('cs2') || s.includes('cs:go') || s.includes('csgo') || s.includes('esport')) return 'CS2';
   if (s.includes('dota')) return 'Dota 2';
   if (s.includes('football') || s.includes('soccer') || s.includes('copa') || s.includes('liga') || s.includes('premier')) return 'Футбол';
   if (s.includes('hockey') || s.includes('nhl') || s.includes('khl')) return 'Хоккей';
@@ -90,13 +90,33 @@ function getDecimalOdd(item) {
   return null;
 }
 
-async function fetchAllOdds() {
+async function discoverEsportsKeys() {
+  const keys = new Set(['esports', 'cs2', 'dota2', 'counter-strike']);
+  try {
+    const raw = await fetchSharp('/sports');
+    const list = extractArray(raw);
+    console.log('Available /sports:', JSON.stringify(list).slice(0, 700));
+    for (const s of list) {
+      const id = String(s.id ?? s.key ?? s.slug ?? s.name ?? '').toLowerCase();
+      if (id.includes('esport') || id.includes('cs') || id.includes('counter') || id.includes('dota') || id.includes('gaming')) {
+        keys.add(String(s.id ?? s.key ?? s.slug ?? s.name));
+      }
+    }
+  } catch (err) {
+    console.warn('Could not fetch /sports:', err.message);
+  }
+  return Array.from(keys);
+}
+
+async function fetchAllOdds(esportsKeys) {
   const all = [];
-  const urls = [
-    '/odds/best?market_type=moneyline&limit=500',
-    '/odds/best?market_type=moneyline&limit=500&offset=500',
-    '/odds/best?limit=500'
-  ];
+  const urls = [];
+
+  for (const sport of esportsKeys) {
+    urls.push(`/odds/best?sport=${encodeURIComponent(sport)}&limit=300`);
+  }
+  urls.push('/odds/best?market_type=moneyline&limit=500');
+  urls.push('/odds/best?limit=500');
 
   for (const u of urls) {
     try {
@@ -104,17 +124,18 @@ async function fetchAllOdds() {
       const list = extractArray(raw);
       all.push(...list);
       console.log(`Fetched ${list.length} rows from ${u}`);
-      if (list.length < 100 && u.includes('offset=500')) break;
     } catch (err) {
       console.warn(`Skip ${u}: ${err.message}`);
     }
-    await sleep(300);
+    await sleep(250);
   }
   return all;
 }
 
 async function syncUpcomingFixtures() {
+  const esportsKeys = await discoverEsportsKeys();
   const eventsTimeMap = new Map();
+
   try {
     const rawEvents = await fetchSharp('/events?limit=500');
     for (const ev of extractArray(rawEvents)) {
@@ -122,21 +143,22 @@ async function syncUpcomingFixtures() {
       const start = ev.start_time || ev.commence_time || ev.starts_at || ev.date || null;
       if (id && start) eventsTimeMap.set(id, start);
     }
-    console.log(`Loaded ${eventsTimeMap.size} event timestamps from /events.`);
   } catch (err) {
     console.warn('Could not load /events:', err.message);
   }
 
-  await sleep(300);
+  await sleep(250);
 
-  const oddsList = await fetchAllOdds();
+  const oddsList = await fetchAllOdds(esportsKeys);
   console.log(`Total odds entries collected: ${oddsList.length}`);
 
   const grouped = new Map();
 
   for (const item of oddsList) {
     const market = String(item.market_type ?? '').toLowerCase();
-    if (market !== 'moneyline' && market !== 'h2h' && market !== '1x2' && market !== 'winner') continue;
+    if (market.includes('spread') || market.includes('handicap') || market.includes('total') || market.includes('over') || market.includes('under')) {
+      continue;
+    }
     if (item.is_main_line === false) continue;
 
     const evId = String(item.event_id ?? '');
@@ -199,6 +221,13 @@ async function syncUpcomingFixtures() {
     });
   }
 
+  // Киберспорт ставим в начало списка, чтобы не обрезался лимитом батча
+  payload.sort((a, b) => {
+    const aEsp = a.category === 'CS2' || a.category === 'Dota 2' ? 0 : 1;
+    const bEsp = b.category === 'CS2' || b.category === 'Dota 2' ? 0 : 1;
+    return aEsp - bEsp;
+  });
+
   if (payload.length === 0) {
     console.log('No complete moneyline matches assembled.');
     return;
@@ -209,7 +238,7 @@ async function syncUpcomingFixtures() {
   if (error) {
     throw new Error('Supabase admin_upsert_events error: ' + error.message);
   }
-  console.log(`Synced ${batch.length} matches with real team names and decimal odds.`);
+  console.log(`Synced ${batch.length} matches (CS2/Dota prioritized).`);
 }
 
 (async function main() {
