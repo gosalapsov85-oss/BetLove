@@ -56,7 +56,6 @@
     --red: #ff4757;
     --red-soft: rgba(255, 71, 87, 0.15);
     --blue: #2563eb;
-    --blue-hover: #1d4ed8;
     --radius: 14px;
     --nav-safe-bottom: max(env(safe-area-inset-bottom, 0px), 46px);
   }
@@ -147,6 +146,19 @@
   }
   .btn-blue-rules:hover { filter: brightness(1.08); }
 
+  .tiny-ref-link {
+    background: none;
+    border: none;
+    color: var(--text-dim);
+    font-size: 11px;
+    font-weight: 700;
+    cursor: pointer;
+    text-decoration: underline;
+    text-underline-offset: 3px;
+    padding: 4px 6px;
+  }
+  .tiny-ref-link:hover { color: var(--yellow); }
+
   .rules-check-row {
     display: flex;
     align-items: flex-start;
@@ -170,7 +182,6 @@
     cursor: pointer;
   }
 
-  /* RULES DOCUMENT STYLING */
   .rule-block {
     background: var(--surface-2);
     border: 1px solid var(--border-strong);
@@ -201,6 +212,63 @@
     color: #fca5a5;
     line-height: 1.45;
     margin-bottom: 12px;
+  }
+
+  /* EASTER EGG SECRET BOX AT END OF TOP-100 */
+  .easter-egg-box {
+    margin-top: 12px;
+    background: linear-gradient(135deg, rgba(37, 99, 235, 0.14) 0%, rgba(255, 214, 0, 0.12) 100%);
+    border: 1px dashed rgba(255, 214, 0, 0.55);
+    border-radius: 14px;
+    padding: 13px 14px;
+    text-align: center;
+  }
+  .secret-code-pill {
+    display: inline-block;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    font-size: 14px;
+    font-weight: 900;
+    letter-spacing: 1.4px;
+    color: var(--yellow);
+    background: rgba(0, 0, 0, 0.45);
+    border: 1px solid rgba(255, 214, 0, 0.35);
+    padding: 5px 12px;
+    border-radius: 8px;
+    margin: 6px 0 10px;
+  }
+
+  /* ONLINE CHAT */
+  .chat-feed-box {
+    background: var(--surface-2);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 10px;
+    height: 220px;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 7px;
+    margin-bottom: 8px;
+  }
+  .chat-msg-bubble {
+    background: var(--surface-1);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 7px 10px;
+    font-size: 12px;
+  }
+  .chat-msg-bubble.system {
+    background: rgba(255, 214, 0, 0.08);
+    border-color: rgba(255, 214, 0, 0.28);
+  }
+  .chat-msg-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 6px;
+    font-size: 10.5px;
+    color: var(--text-dim);
+    margin-bottom: 2px;
   }
 
   /* BET PLACED CONFIRMATION OVERLAY */
@@ -966,7 +1034,7 @@
   .sheet-backdrop { position: fixed; inset: 0; background: rgba(0, 0, 0, 0.8); backdrop-filter: blur(6px); z-index: 80; display: none; align-items: flex-end; justify-content: center; }
   .sheet-backdrop.open { display: flex; }
   #createSheetBackdrop { z-index: 105; }
-  #promoInfoSheetBackdrop { z-index: 130; }
+  #promoInfoSheetBackdrop, #refFriendSheetBackdrop, #playerShowcaseBackdrop { z-index: 130; }
   #rulesSheetBackdrop { z-index: 9800; }
   #fullLeaderboardBackdrop { z-index: 120; }
 
@@ -1060,7 +1128,9 @@
     border-radius: 11px;
     padding: 10px 12px;
     margin-bottom: 7px;
+    cursor: pointer;
   }
+  .lb-row:hover { border-color: rgba(255, 214, 0, 0.32); }
   .lb-row.me { border-color: rgba(255, 214, 0, 0.45); background: rgba(255, 214, 0, 0.06); }
   .lb-rank {
     width: 26px;
@@ -1114,7 +1184,7 @@
 </head>
 <body>
 
-<!-- AUTH GATE (CLOUD LOGIN / SIGNUP + MANDATORY RULES) -->
+<!-- AUTH GATE -->
 <div id="authGate" class="auth-gate">
   <div class="auth-card">
     <div class="auth-logo-wrap">
@@ -1135,6 +1205,10 @@
     <div class="mode-switch" style="margin-bottom:14px;">
       <button type="button" class="mode-btn active" id="authTabLogin" onclick="setAuthMode('login')">Вход</button>
       <button type="button" class="mode-btn" id="authTabSignup" onclick="setAuthMode('signup')">Регистрация</button>
+    </div>
+
+    <div id="refBannerBox" class="hidden" style="background:var(--green-soft);border:1px solid rgba(0,200,117,0.35);border-radius:10px;padding:8px 11px;font-size:11.5px;color:var(--green);margin-bottom:10px;">
+      🎁 Приглашение от <strong id="refBannerNick">@friend</strong> • Бонус +300 BC после входа
     </div>
 
     <div class="field">
@@ -1159,11 +1233,16 @@
     </label>
 
     <button id="authSubmitBtn" class="btn btn-gold btn-full" onclick="submitCloudAuth()">Войти в аккаунт</button>
-    <div id="authErrorMsg" style="font-size:11.5px;color:var(--red);text-align:center;margin-top:10px;min-height:16px;"></div>
+
+    <div style="text-align:center;margin-top:8px;">
+      <button type="button" class="tiny-ref-link" onclick="openRefFriendModal()">Пришли от друга? Указать ник</button>
+    </div>
+
+    <div id="authErrorMsg" style="font-size:11.5px;color:var(--red);text-align:center;margin-top:6px;min-height:16px;"></div>
   </div>
 </div>
 
-<!-- MANDATORY RULES GATE FOR EXISTING USERS WHO HAVEN'T ACCEPTED YET -->
+<!-- MANDATORY RULES GATE FOR EXISTING USERS -->
 <div id="rulesGate" class="auth-gate hidden">
   <div class="auth-card" style="max-width:440px;">
     <div style="text-align:center;margin-bottom:10px;">
@@ -1190,7 +1269,7 @@
   </div>
 </div>
 
-<!-- BANNED ACCOUNT SCREEN -->
+<!-- BANNED ACCOUNT SCREEN + APPEAL -->
 <div id="bannedGate" class="auth-gate hidden">
   <div class="auth-card" style="border-color:rgba(255,71,87,0.5);text-align:center;">
     <div style="font-size:40px;margin-bottom:8px;">🚫</div>
@@ -1198,13 +1277,16 @@
     <div style="font-size:12.5px;color:var(--text-dim);margin-bottom:12px;">
       Доступ к платформе BetLove ограничен администрацией за нарушение правил.
     </div>
-    <div style="background:var(--surface-2);border:1px solid rgba(255,71,87,0.35);border-radius:12px;padding:12px;margin-bottom:14px;">
+    <div style="background:var(--surface-2);border:1px solid rgba(255,71,87,0.35);border-radius:12px;padding:12px;margin-bottom:12px;">
       <div style="font-size:11px;color:var(--text-dim);margin-bottom:3px;">Причина блокировки:</div>
       <div style="font-size:13.5px;font-weight:800;color:#fff;" id="banReasonDisplay">Нарушение правил проекта</div>
     </div>
-    <div style="font-size:12px;color:var(--text-dim);margin-bottom:14px;">
-      Если считаешь блокировку ошибочной, напиши в Telegram: <strong style="color:var(--yellow);">@debokiyy</strong>
+    <div style="background:var(--surface-2);border:1px solid var(--border-strong);border-radius:12px;padding:11px;margin-bottom:14px;font-size:12px;color:var(--text-dim);line-height:1.45;">
+      Осознал вину и хочешь запросить помилование? Напиши в Telegram <strong style="color:var(--yellow);">@debokiyy</strong>, укажи свой никнейм и честно опиши ситуацию — администрация может рассмотреть разбан.
     </div>
+    <a class="btn btn-blue btn-full" style="text-decoration:none;margin-bottom:8px;" href="https://t.me/debokiyy" target="_blank" rel="noopener">
+      ✉️ Написать @debokiyy для апелляции
+    </a>
     <button class="btn btn-secondary btn-full" onclick="logoutCloudUser()">Выйти из аккаунта</button>
   </div>
 </div>
@@ -1306,13 +1388,11 @@
       </div>
 
       <div id="lineLiveWrapper">
-        <!-- ADMIN ONLY CREATE BUTTON -->
         <button id="adminCreateBar" class="line-create-bar hidden" onclick="openCreateModal()">
           <span>👑 Админ: добавить матч или загрузить JSON</span>
           <span style="color:var(--yellow);font-size:12px;">Опубликовать →</span>
         </button>
 
-        <!-- ADMIN ONLY BOOKMAKER SOURCE FILTER & GLOBAL VISIBILITY -->
         <div id="adminBookmakerBar" class="admin-bk-bar hidden">
           <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
             <span style="font-size:11.5px;font-weight:800;color:var(--yellow);">📡 БК (мой вид):</span>
@@ -1345,7 +1425,6 @@
         </div>
         <div class="filter-bar mobile-only" id="mobSportFilterBar"></div>
 
-        <!-- TOURNAMENT & MAJOR QUICK FILTER -->
         <div id="tournamentFilterRow" style="display:flex;gap:6px;margin-bottom:10px;align-items:center;">
           <button id="btnMajorOnly" class="filter-chip" onclick="toggleMajorOnly()" style="flex-shrink:0;">🏆 Только Major</button>
           <select id="tournamentSelectFilter" class="select" onchange="setTournamentFilter(this.value)" style="padding:6px 10px;font-size:12px;">
@@ -1356,7 +1435,7 @@
         <div id="eventsContainer"></div>
       </div>
 
-      <!-- NARDY 24/7 (SERVER-SIDE FAIR ROLL) -->
+      <!-- NARDY 24/7 -->
       <div id="nardyWrapper" class="hidden">
         <div class="nardy-stage">
           <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
@@ -1460,8 +1539,6 @@
 
     <!-- TAB 3: BONUSES, WHEEL & PROMOS -->
     <div id="tab-farm" class="hidden">
-
-      <!-- DAILY STREAK CARD -->
       <div class="panel" style="border-color: rgba(0, 200, 117, 0.32);">
         <div class="panel-title">
           <span>🔥 Ежедневный стрик (BC)</span>
@@ -1474,7 +1551,6 @@
         <button class="btn btn-primary btn-full" id="claimStreakBtn" onclick="claimDailyStreak()">🎁 Забрать ежедневный бонус</button>
       </div>
 
-      <!-- DAILY FORTUNE WHEEL CARD -->
       <div class="wheel-casino-card">
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;">
           <strong style="font-size:15px;color:#fff;">🎡 Колесо Удачи (раз в день)</strong>
@@ -1518,7 +1594,6 @@
         </button>
       </div>
 
-      <!-- PROMO CODES CARD -->
       <div class="panel" style="border-color: rgba(255, 214, 0, 0.28);">
         <div class="panel-title">
           <span>🎟 Промокоды на Фрибеты</span>
@@ -1534,6 +1609,25 @@
         </div>
       </div>
 
+      <!-- REFERRAL BOX IN BONUSES -->
+      <div class="panel" style="border-color: rgba(0, 200, 117, 0.28);">
+        <div class="panel-title">
+          <span>🤝 Реферальная программа</span>
+          <span class="fb-badge num">+500 BC</span>
+        </div>
+        <div class="panel-sub">
+          +300 BC другу при старте • +500 BC тебе за приглашение • +2% от проигранных ставок друга.
+        </div>
+        <div class="row-2" style="margin-bottom:8px;">
+          <input id="myRefLinkInput" class="input" readonly style="font-size:11.5px;">
+          <button class="btn btn-primary" onclick="copyMyRefLink()">📋 Копировать</button>
+        </div>
+        <div id="profileBindRefRow" class="row-2">
+          <input id="profileRefNickInput" class="input" placeholder="Ник пригласившего друга...">
+          <button class="btn btn-secondary" onclick="bindReferrerFromProfile()">Привязать ник</button>
+        </div>
+      </div>
+
       <!-- ADMIN ONLY PROMO CREATOR & LIST -->
       <div id="devPromoGenBox" class="panel hidden" style="border-color: rgba(255, 214, 0, 0.35);">
         <div class="panel-title">
@@ -1544,8 +1638,8 @@
 
         <div class="promo-admin-grid">
           <div>
-            <label class="label">Код (например, MAJOR2026)</label>
-            <input id="admPromoCode" class="input" placeholder="MAJOR2026" style="text-transform:uppercase;font-family:monospace;">
+            <label class="label">Код (например, LOWTAB)</label>
+            <input id="admPromoCode" class="input" placeholder="LOWTAB" style="text-transform:uppercase;font-family:monospace;">
           </div>
           <div>
             <label class="label">Бонус (ФР)</label>
@@ -1573,7 +1667,7 @@
       </div>
     </div>
 
-    <!-- TAB 4: LEADERBOARD & PROFILE -->
+    <!-- TAB 4: LEADERBOARD, CHAT, MODERATION & PROFILE -->
     <div id="tab-stats" class="hidden">
       <div class="stat-grid">
         <div class="stat-card">
@@ -1603,20 +1697,39 @@
             <button class="btn btn-gold btn-sm" onclick="openFullLeaderboard()">Весь Топ-100 →</button>
           </div>
         </div>
-        <div class="panel-sub">Лидеры по балансу BC. Нажми «Весь Топ-100», чтобы открыть 10 страниц рейтинга.</div>
+        <div class="panel-sub">Нажми на любого игрока, чтобы посмотреть его лучший занос и последние 3 ставки.</div>
         <div id="leaderboardTop5Container"></div>
       </div>
 
-      <!-- ADMIN ONLY: USER MODERATION (BAN / RESET BALANCE / DELETE ACCOUNT) -->
-      <div id="adminUsersModBox" class="panel hidden" style="border-color: rgba(255, 71, 87, 0.35);">
+      <!-- LIVE ONLINE CHAT -->
+      <div class="panel">
         <div class="panel-title">
-          <span style="color:var(--red);">🛡 Админ: модерация игроков</span>
+          <span>💬 Общий чат игроков</span>
+          <span class="fb-badge">ONLINE</span>
+        </div>
+        <div class="panel-sub">Общайся с другими игроками и следи за крупными заносами в реальном времени.</div>
+        <div class="chat-feed-box" id="chatFeedBox"></div>
+        <div class="row-2" style="grid-template-columns:1fr auto;">
+          <input id="chatMessageInput" class="input" placeholder="Написать сообщение в чат..." maxlength="240" onkeydown="if(event.key==='Enter')sendChatMessage()">
+          <button class="btn btn-gold" onclick="sendChatMessage()">Отправить</button>
+        </div>
+      </div>
+
+      <!-- ADMIN ONLY: USER MODERATION + BANNED LIST -->
+      <div id="adminUsersModBox" class="panel hidden" style="border-color: rgba(255, 214, 0, 0.3);">
+        <div class="panel-title">
+          <span style="color:var(--yellow);">🛡 Админ: управление игроками</span>
           <button class="btn btn-secondary btn-sm" onclick="loadAdminUsers()">↻ Обновить</button>
         </div>
-        <div class="panel-sub">Блокировка за ники/нарушения, обнуление баланса за багоюз и полное удаление аккаунтов.</div>
+        <div class="panel-sub">Проверка IP на твинки, обнуление баланса, блокировка и лист забаненных игроков.</div>
+
+        <div class="mode-switch" style="margin-bottom:10px;">
+          <button type="button" class="mode-btn active" id="modTabAllUsers" onclick="setAdminModTab('all')">👥 Все игроки</button>
+          <button type="button" class="mode-btn" id="modTabBannedList" onclick="setAdminModTab('banned')">📋 Лист забаненных</button>
+        </div>
 
         <div class="row-2" style="margin-bottom:10px;">
-          <input id="adminUserSearchInput" class="input" placeholder="Поиск игрока по нику..." oninput="loadAdminUsers()">
+          <input id="adminUserSearchInput" class="input" placeholder="Поиск по нику или IP..." oninput="loadAdminUsers()">
           <button class="btn btn-secondary" onclick="loadAdminUsers()">🔍 Найти</button>
         </div>
 
@@ -1741,7 +1854,32 @@
   </button>
 </nav>
 
-<!-- RULES MODAL (FORMATTED OFFICIAL RULES) -->
+<!-- REFERRAL FRIEND PICKER MODAL -->
+<div id="refFriendSheetBackdrop" class="sheet-backdrop" onclick="closeSheetOnBackdrop(event, 'refFriendSheetBackdrop')">
+  <div class="sheet">
+    <div class="sheet-handle"></div>
+    <div class="panel-title" style="margin-bottom:6px;">
+      <span>🤝 Пришли от друга?</span>
+      <button class="btn btn-secondary btn-sm" onclick="closeSheet('refFriendSheetBackdrop')">✕</button>
+    </div>
+    <div class="panel-sub">Выбери игрока из списка или введи его никнейм — после входа ты получишь +300 BC, а друг +500 BC.</div>
+    <div class="field">
+      <input id="refFriendSearchInput" class="input" placeholder="Поиск игрока по нику..." oninput="renderRefFriendPicker()">
+    </div>
+    <div id="refFriendPickerList" style="max-height:240px;overflow-y:auto;display:flex;flex-direction:column;gap:6px;margin-bottom:10px;"></div>
+    <button class="btn btn-gold btn-full" onclick="applyPickedReferrer()">Подтвердить ник друга</button>
+  </div>
+</div>
+
+<!-- PLAYER SHOWCASE MODAL (BEST WIN + LAST 3 BETS) -->
+<div id="playerShowcaseBackdrop" class="sheet-backdrop" onclick="closeSheetOnBackdrop(event, 'playerShowcaseBackdrop')">
+  <div class="sheet">
+    <div class="sheet-handle"></div>
+    <div id="playerShowcaseContent"></div>
+  </div>
+</div>
+
+<!-- RULES MODAL -->
 <div id="rulesSheetBackdrop" class="sheet-backdrop" onclick="closeSheetOnBackdrop(event, 'rulesSheetBackdrop')">
   <div class="sheet">
     <div class="sheet-handle"></div>
@@ -1784,7 +1922,7 @@
   </div>
 </div>
 
-<!-- FULL TOP-100 LEADERBOARD MODAL (10 PAGES x 10 PLAYERS) -->
+<!-- FULL TOP-100 LEADERBOARD MODAL (10 PAGES + EASTER EGG LOWTAB) -->
 <div id="fullLeaderboardBackdrop" class="sheet-backdrop" onclick="closeSheetOnBackdrop(event, 'fullLeaderboardBackdrop')">
   <div class="sheet">
     <div class="sheet-handle"></div>
@@ -1795,6 +1933,7 @@
     <div class="panel-sub" id="lbPageSubtitle">Страница 1 из 10 • Места 1–10</div>
 
     <div id="fullLeaderboardList"></div>
+    <div id="easterEggContainer"></div>
     <div class="pagination-bar" id="lbPaginationBar"></div>
   </div>
 </div>
@@ -1951,7 +2090,13 @@ let userProfile = null;
 let cloudEvents = [];
 let cloudBets = [];
 let leaderboardList = [];
+let adminUsersCache = [];
+let chatMessages = [];
+let chatSubscribed = false;
+
 let lbCurrentPage = 1;
+let adminModTab = 'all';
+let pickedRefNick = '';
 let coupon = [];
 let collapsedTournaments = {};
 
@@ -2003,6 +2148,117 @@ function formatCooldownLeft(msLeft) {
   const h = Math.floor(totalMin / 60);
   const m = totalMin % 60;
   return h > 0 ? `${h}ч ${m}м` : `${m}м`;
+}
+
+/* ================= REFERRAL SYSTEM (?ref= & FRIEND PICKER) ================= */
+
+function captureUrlReferral() {
+  try {
+    const params = new URLSearchParams(window.location.search);
+    const ref = (params.get('ref') || '').trim().toLowerCase().replace(/^@+/, '');
+    if (ref) {
+      localStorage.setItem('betlove_pending_ref', ref);
+    }
+    const savedRef = localStorage.getItem('betlove_pending_ref') || '';
+    const banner = document.getElementById('refBannerBox');
+    const nickEl = document.getElementById('refBannerNick');
+    if (savedRef && banner && nickEl) {
+      nickEl.textContent = `@${savedRef}`;
+      banner.classList.remove('hidden');
+    }
+  } catch (e) {}
+}
+
+async function openRefFriendModal() {
+  pickedRefNick = localStorage.getItem('betlove_pending_ref') || '';
+  document.getElementById('refFriendSearchInput').value = '';
+  if (leaderboardList.length === 0) {
+    const { data } = await sb.from('profiles').select('id, username, balance').eq('is_banned', false).order('balance', { ascending: false }).limit(100);
+    if (data) leaderboardList = data;
+  }
+  renderRefFriendPicker();
+  document.getElementById('refFriendSheetBackdrop').classList.add('open');
+}
+
+function renderRefFriendPicker() {
+  const q = (document.getElementById('refFriendSearchInput')?.value || '').trim().toLowerCase().replace(/^@+/, '');
+  const list = document.getElementById('refFriendPickerList');
+  if (!list) return;
+
+  const matches = leaderboardList
+    .filter(p => !currentUser || p.id !== currentUser.id)
+    .filter(p => !q || String(p.username || '').toLowerCase().includes(q))
+    .slice(0, 30);
+
+  if (matches.length === 0) {
+    list.innerHTML = `<div style="font-size:12px;color:var(--text-dim);padding:8px;">Игроки не найдены</div>`;
+    return;
+  }
+
+  list.innerHTML = matches.map(p => {
+    const active = pickedRefNick === p.username;
+    return `
+      <button type="button" class="lb-row ${active ? 'me' : ''}" style="width:100%;margin-bottom:0;text-align:left;" onclick="pickedRefNick='${p.username}';renderRefFriendPicker();">
+        <strong style="color:#fff;">@${p.username}</strong>
+        <span class="num" style="font-size:11.5px;color:var(--green);">${formatShort(p.balance)} BC</span>
+      </button>
+    `;
+  }).join('');
+}
+
+async function applyPickedReferrer() {
+  const typed = (document.getElementById('refFriendSearchInput')?.value || '').trim().replace(/^@+/, '');
+  const chosen = (pickedRefNick || typed).trim().toLowerCase();
+  if (!chosen) {
+    showToast('Выбери игрока или введи его ник');
+    return;
+  }
+
+  localStorage.setItem('betlove_pending_ref', chosen);
+  const banner = document.getElementById('refBannerBox');
+  const nickEl = document.getElementById('refBannerNick');
+  if (banner && nickEl) {
+    nickEl.textContent = `@${chosen}`;
+    banner.classList.remove('hidden');
+  }
+  closeSheet('refFriendSheetBackdrop');
+
+  if (currentUser) {
+    const { data, error } = await sb.rpc('apply_referral_by_username', { p_referrer_username: chosen });
+    if (error || !data?.ok) {
+      showToast('⚠️ ' + (data?.error || error?.message || 'Не удалось привязать'));
+      return;
+    }
+    localStorage.removeItem('betlove_pending_ref');
+    await syncAllCloudData(false);
+    showToast(`🎁 Привязан @${data.referrer}! Начислено +${data.my_bonus} BC`);
+  } else {
+    showToast(`✅ Ник @${chosen} сохранён! Бонус начислится после входа`);
+  }
+}
+
+async function bindReferrerFromProfile() {
+  const nick = (document.getElementById('profileRefNickInput')?.value || '').trim();
+  if (!nick) {
+    showToast('Введи ник друга');
+    return;
+  }
+  const { data, error } = await sb.rpc('apply_referral_by_username', { p_referrer_username: nick });
+  if (error || !data?.ok) {
+    showToast('⚠️ ' + (data?.error || error?.message || 'Не удалось привязать'));
+    return;
+  }
+  document.getElementById('profileRefNickInput').value = '';
+  await syncAllCloudData(false);
+  showToast(`🎁 Друг @${data.referrer} привязан! +${data.my_bonus} BC`);
+}
+
+function copyMyRefLink() {
+  if (!userProfile?.username) return;
+  const baseUrl = window.location.origin + window.location.pathname;
+  const link = `${baseUrl}?ref=${encodeURIComponent(userProfile.username)}`;
+  if (navigator.clipboard) navigator.clipboard.writeText(link).catch(() => {});
+  showToast('📋 Реферальная ссылка скопирована!');
 }
 
 /* ================= RULES MODAL & ACCEPTANCE ================= */
@@ -2127,7 +2383,7 @@ function isEventAllowedByBookmaker(ev, isAdmin) {
   return globalVisibleBookmakers[src] !== false;
 }
 
-/* ================= CLOUD AUTH (NICKNAME + PASSWORD + RULES CHECK) ================= */
+/* ================= CLOUD AUTH ================= */
 
 function setAuthMode(mode) {
   authMode = mode;
@@ -2192,6 +2448,12 @@ async function submitCloudAuth() {
         currentUser = data.user;
         localStorage.setItem('betlove_rules_accepted', '1');
         await sb.rpc('accept_user_rules');
+        await sb.rpc('log_user_ip');
+        const pendingRef = localStorage.getItem('betlove_pending_ref');
+        if (pendingRef) {
+          await sb.rpc('apply_referral_by_username', { p_referrer_username: pendingRef });
+          localStorage.removeItem('betlove_pending_ref');
+        }
         await onUserAuthenticated();
         showToast(`🎉 Добро пожаловать, ${cleanNick}!`);
       }
@@ -2206,6 +2468,12 @@ async function submitCloudAuth() {
         if (document.getElementById('authRulesCheckbox')?.checked) {
           localStorage.setItem('betlove_rules_accepted', '1');
           await sb.rpc('accept_user_rules');
+        }
+        await sb.rpc('log_user_ip');
+        const pendingRef = localStorage.getItem('betlove_pending_ref');
+        if (pendingRef) {
+          await sb.rpc('apply_referral_by_username', { p_referrer_username: pendingRef });
+          localStorage.removeItem('betlove_pending_ref');
         }
         await onUserAuthenticated();
       }
@@ -2232,6 +2500,7 @@ async function onUserAuthenticated() {
   const sel = document.getElementById('adminSourceViewFilter');
   if (sel) sel.value = adminSourceView;
   drawFortuneWheel();
+  subscribeRealtimeChat();
   await syncAllCloudData(false);
 }
 
@@ -2249,7 +2518,6 @@ async function syncAllCloudData(notify = false) {
   if (evRes.data) cloudEvents = evRes.data;
   if (betsRes.data) cloudBets = betsRes.data;
 
-  // Проверка бана
   if (userProfile?.is_banned) {
     document.getElementById('banReasonDisplay').textContent = userProfile.ban_reason || 'Нарушение правил платформы';
     document.getElementById('bannedGate').classList.remove('hidden');
@@ -2258,7 +2526,6 @@ async function syncAllCloudData(notify = false) {
     document.getElementById('bannedGate').classList.add('hidden');
   }
 
-  // Проверка принятия правил (если заходил со старого аккаунта и ещё не принимал)
   if (userProfile && userProfile.rules_accepted === false) {
     document.getElementById('rulesGate').classList.remove('hidden');
     return;
@@ -2300,50 +2567,66 @@ async function claimAdminRights() {
   showToast('👑 Права администратора активированы!');
 }
 
-/* ================= ADMIN USER MODERATION (BAN / RESET / DELETE) ================= */
+/* ================= ADMIN USER MODERATION + BANNED LIST ================= */
+
+function setAdminModTab(tab) {
+  adminModTab = tab;
+  document.getElementById('modTabAllUsers').classList.toggle('active', tab === 'all');
+  document.getElementById('modTabBannedList').classList.toggle('active', tab === 'banned');
+  renderAdminUsersFromCache();
+}
 
 async function loadAdminUsers() {
-  const container = document.getElementById('adminUsersList');
-  if (!container || !userProfile?.is_admin) return;
-
+  if (!userProfile?.is_admin) return;
   const search = document.getElementById('adminUserSearchInput')?.value || '';
   const { data, error } = await sb.rpc('admin_list_users', { p_search: search });
+  if (!error && Array.isArray(data)) {
+    adminUsersCache = data;
+  }
+  renderAdminUsersFromCache();
+}
 
-  if (error || !data) {
-    container.innerHTML = `<div style="font-size:12px;color:var(--text-dim);">Не удалось загрузить игроков</div>`;
+function renderAdminUsersFromCache() {
+  const container = document.getElementById('adminUsersList');
+  if (!container) return;
+
+  const list = adminModTab === 'banned'
+    ? adminUsersCache.filter(u => u.is_banned)
+    : adminUsersCache;
+
+  if (list.length === 0) {
+    container.innerHTML = `<div style="font-size:12px;color:var(--text-dim);">${adminModTab === 'banned' ? 'Лист забаненных пуст' : 'Игроки не найдены'}</div>`;
     return;
   }
 
-  if (data.length === 0) {
-    container.innerHTML = `<div style="font-size:12px;color:var(--text-dim);">Игроки не найдены</div>`;
-    return;
-  }
-
-  container.innerHTML = data.map((u) => {
+  container.innerHTML = list.map((u) => {
     const isMe = currentUser && u.id === currentUser.id;
     const safeName = String(u.username || 'player').replace(/'/g, "\\'");
+    const isTwinkIp = u.last_ip && u.last_ip !== 'unknown' && Number(u.ip_count || 0) > 1;
+
     return `
-      <div class="promo-item-row" style="${u.is_banned ? 'border-color:rgba(255,71,87,0.45);background:rgba(255,71,87,0.06);' : ''}">
+      <div class="promo-item-row">
         <div style="min-width:0;flex:1;">
           <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
             <strong style="color:#fff;">@${u.username}</strong>
             ${u.is_admin ? '<span class="fb-badge">ADMIN</span>' : ''}
-            ${u.is_banned ? '<span class="live-badge-pill">ЗАБАНЕН</span>' : ''}
+            ${u.is_banned ? '<span class="fb-badge" style="color:var(--red);border-color:rgba(255,71,87,0.35);">БАН</span>' : ''}
+            ${isTwinkIp ? `<span class="fb-badge">⚠️ Твинк (${u.ip_count} акк.)</span>` : ''}
           </div>
           <div style="font-size:11px;color:var(--text-dim);margin-top:2px;" class="num">
-            Баланс: <strong style="color:var(--green);">${formatShort(u.balance)} BC</strong> • ФР: ${Math.round(u.freebet_balance || 0)}
+            Баланс: <strong style="color:var(--green);">${formatShort(u.balance)} BC</strong> • ФР: ${Math.round(u.freebet_balance || 0)} • IP: <span style="color:#cbd5e1;">${u.last_ip || '—'}</span>
           </div>
-          ${u.is_banned && u.ban_reason ? `<div style="font-size:10.5px;color:var(--red);margin-top:2px;">Причина: ${u.ban_reason}</div>` : ''}
+          ${u.is_banned && u.ban_reason ? `<div style="font-size:10.5px;color:var(--text-dim);margin-top:2px;">Причина: ${u.ban_reason}</div>` : ''}
         </div>
 
-        ${isMe ? '<span style="font-size:11px;color:var(--text-dim);">Это вы</span>' : `
+        ${isMe ? '<span style="font-size:11px;color:var(--text-dim);">Вы</span>' : `
           <div style="display:flex;gap:4px;flex-wrap:wrap;">
-            <button class="btn btn-secondary btn-sm" onclick="adminZeroBalance('${u.id}', '${safeName}')" title="Снять весь баланс за багоюз">💸 Обнулить</button>
+            <button class="btn btn-secondary btn-sm" onclick="adminZeroBalance('${u.id}', '${safeName}')">💸 Обнулить</button>
             ${u.is_banned
               ? `<button class="btn btn-primary btn-sm" onclick="adminToggleBan('${u.id}', '${safeName}', false)">✅ Разбан</button>`
               : `<button class="btn btn-danger btn-sm" onclick="adminToggleBan('${u.id}', '${safeName}', true)">🚫 Бан</button>`
             }
-            <button class="btn btn-danger btn-sm" onclick="adminDeleteAccount('${u.id}', '${safeName}')" title="Удалить аккаунт полностью">🗑</button>
+            <button class="btn btn-danger btn-sm" onclick="adminDeleteAccount('${u.id}', '${safeName}')">🗑</button>
           </div>
         `}
       </div>
@@ -2354,7 +2637,7 @@ async function loadAdminUsers() {
 async function adminToggleBan(targetId, username, shouldBan) {
   let reason = '';
   if (shouldBan) {
-    reason = prompt(`Укажи причину блокировки для @${username}:`, 'Нарушение правил BetLove (никнейм / мультиаккаунт / багоюз)');
+    reason = prompt(`Укажи причину блокировки для @${username}:`, 'Нарушение правил BetLove');
     if (reason === null) return;
   } else {
     if (!confirm(`Разблокировать аккаунт @${username}?`)) return;
@@ -2372,12 +2655,12 @@ async function adminToggleBan(targetId, username, shouldBan) {
   }
 
   showToast(shouldBan ? `🚫 Игрок @${username} заблокирован` : `✅ Игрок @${username} разблокирован`);
-  loadAdminUsers();
-  loadLeaderboard();
+  await loadAdminUsers();
+  await loadLeaderboard();
 }
 
 async function adminZeroBalance(targetId, username) {
-  if (!confirm(`Обнулить весь баланс (BC и ФР) игроку @${username} за багоюз?`)) return;
+  if (!confirm(`Обнулить весь баланс (BC и ФР) игроку @${username}?`)) return;
 
   const { data, error } = await sb.rpc('admin_reset_balance', { p_target_id: targetId });
   if (error || !data?.ok) {
@@ -2386,12 +2669,12 @@ async function adminZeroBalance(targetId, username) {
   }
 
   showToast(`💸 Баланс игрока @${username} обнулён`);
-  loadAdminUsers();
-  loadLeaderboard();
+  await loadAdminUsers();
+  await loadLeaderboard();
 }
 
 async function adminDeleteAccount(targetId, username) {
-  if (!confirm(`ВНИМАНИЕ! Полностью удалить аккаунт @${username} и все его ставки без возможности восстановления?`)) return;
+  if (!confirm(`Полностью удалить аккаунт @${username} и все его ставки?`)) return;
 
   const { data, error } = await sb.rpc('admin_delete_user', { p_target_id: targetId });
   if (error || !data?.ok) {
@@ -2400,11 +2683,181 @@ async function adminDeleteAccount(targetId, username) {
   }
 
   showToast(`🗑 Аккаунт @${username} удалён`);
-  loadAdminUsers();
-  loadLeaderboard();
+  await loadAdminUsers();
+  await loadLeaderboard();
 }
 
-/* ================= DAILY STREAK (100 -> 200 -> 300 -> 400 -> 500 BC) ================= */
+/* ================= ONLINE CHAT ================= */
+
+async function loadChatMessages() {
+  const { data } = await sb
+    .from('chat_messages')
+    .select('*')
+    .order('created_at', { ascending: false })
+    .limit(35);
+
+  if (Array.isArray(data)) {
+    chatMessages = data.reverse();
+    renderChatFeed();
+  }
+}
+
+function subscribeRealtimeChat() {
+  if (chatSubscribed || !currentUser) return;
+  chatSubscribed = true;
+  sb.channel('betlove-live-chat')
+    .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'chat_messages' }, (payload) => {
+      if (payload.new && !chatMessages.some(m => m.id === payload.new.id)) {
+        chatMessages.push(payload.new);
+        if (chatMessages.length > 50) chatMessages.shift();
+        renderChatFeed();
+      }
+    })
+    .on('postgres_changes', { event: 'DELETE', schema: 'public', table: 'chat_messages' }, (payload) => {
+      if (payload.old?.id) {
+        chatMessages = chatMessages.filter(m => m.id !== payload.old.id);
+        renderChatFeed();
+      }
+    })
+    .subscribe();
+}
+
+function renderChatFeed() {
+  const box = document.getElementById('chatFeedBox');
+  if (!box) return;
+  const isAdmin = Boolean(userProfile && userProfile.is_admin);
+
+  if (chatMessages.length === 0) {
+    box.innerHTML = `<div style="font-size:11.5px;color:var(--text-dim);text-align:center;margin:auto;">Чат пока пуст — напиши первым!</div>`;
+    return;
+  }
+
+  box.innerHTML = chatMessages.map(m => {
+    const timeStr = m.created_at ? new Date(m.created_at).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' }) : '';
+    return `
+      <div class="chat-msg-bubble ${m.is_system ? 'system' : ''}">
+        <div class="chat-msg-head">
+          <span>
+            <strong style="color:${m.is_system ? 'var(--yellow)' : m.is_admin ? '#f87171' : '#fff'};">${m.is_system ? '🤖 ЗАНОС' : '@' + m.username}</strong>
+            ${m.is_admin && !m.is_system ? '<span class="fb-badge" style="font-size:8.5px;padding:0 4px;">ADMIN</span>' : ''}
+          </span>
+          <span style="display:flex;align-items:center;gap:5px;">
+            <span class="num">${timeStr}</span>
+            ${isAdmin ? `<button style="background:none;border:none;color:var(--red);cursor:pointer;font-size:11px;" onclick="deleteChatMsg(${m.id})">✕</button>` : ''}
+          </span>
+        </div>
+        <div style="color:var(--text);word-break:break-word;">${String(m.message || '').replace(/</g, '&lt;')}</div>
+      </div>
+    `;
+  }).join('');
+
+  box.scrollTop = box.scrollHeight;
+}
+
+async function sendChatMessage() {
+  if (!currentUser || !userProfile) return;
+  const input = document.getElementById('chatMessageInput');
+  const text = (input?.value || '').trim();
+  if (!text) return;
+
+  input.value = '';
+  const { error } = await sb.from('chat_messages').insert({
+    user_id: currentUser.id,
+    username: userProfile.username,
+    is_admin: Boolean(userProfile.is_admin),
+    is_system: false,
+    message: text
+  });
+
+  if (error) {
+    showToast('❌ ' + error.message);
+  } else {
+    await loadChatMessages();
+  }
+}
+
+async function deleteChatMsg(msgId) {
+  await sb.from('chat_messages').delete().eq('id', msgId);
+  chatMessages = chatMessages.filter(m => m.id !== msgId);
+  renderChatFeed();
+}
+
+/* ================= PLAYER SHOWCASE MODAL (BEST WIN + LAST 3 BETS) ================= */
+
+async function openPlayerShowcase(targetId) {
+  const box = document.getElementById('playerShowcaseContent');
+  box.innerHTML = `<div style="text-align:center;padding:24px;color:var(--text-dim);">Загрузка профиля...</div>`;
+  document.getElementById('playerShowcaseBackdrop').classList.add('open');
+
+  const { data, error } = await sb.rpc('get_player_showcase', { p_target_id: targetId });
+  if (error || !data?.ok) {
+    box.innerHTML = `<div class="empty-box"><div class="empty-title">Профиль недоступен</div></div>`;
+    return;
+  }
+
+  const p = data.profile;
+  const best = data.best_bet;
+  const recent = Array.isArray(data.recent_bets) ? data.recent_bets : [];
+
+  const bestHtml = best
+    ? `<div style="background:linear-gradient(135deg,rgba(255,214,0,0.14),rgba(0,200,117,0.1));border:1px solid rgba(255,214,0,0.38);border-radius:12px;padding:12px;margin-bottom:12px;">
+         <div style="font-size:10.5px;font-weight:800;color:var(--yellow);text-transform:uppercase;">🔥 Лучший занос</div>
+         <div style="font-size:17px;font-weight:900;color:var(--green);margin-top:3px;" class="num">+${formatShort(best.payout)} BC (${Number(best.total_odd || 1).toFixed(2)}x)</div>
+         <div style="font-size:11.5px;color:var(--text-dim);margin-top:2px;">${(best.selections || []).map(s => s.eventTitle || s.label).join(' • ') || best.bet_type}</div>
+       </div>`
+    : `<div style="background:var(--surface-2);border:1px solid var(--border);border-radius:12px;padding:11px;margin-bottom:12px;font-size:12px;color:var(--text-dim);">🔥 Лучший занос: пока нет выигранных купонов</div>`;
+
+  const recentHtml = recent.length > 0
+    ? recent.map(b => {
+        const stLabel = b.status === 'won'
+          ? `<span style="color:var(--green);font-weight:800;">+${formatShort(b.payout)} BC</span>`
+          : b.status === 'pending'
+            ? `<span style="color:var(--yellow);font-weight:800;">В игре</span>`
+            : b.status === 'void'
+              ? `<span style="color:var(--text-dim);font-weight:800;">Возврат</span>`
+              : `<span style="color:var(--red);font-weight:800;">-${formatShort(b.stake)} BC</span>`;
+        const firstMatch = (b.selections || [])[0]?.eventTitle || (b.selections || [])[0]?.label || b.bet_type;
+        return `
+          <div class="promo-item-row">
+            <div style="min-width:0;flex:1;">
+              <div style="font-size:12px;font-weight:700;color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${firstMatch}</div>
+              <div style="font-size:10.5px;color:var(--text-dim);" class="num">${b.bet_type} • ${Number(b.total_odd || 1).toFixed(2)}x • Ставка ${formatShort(b.stake)}</div>
+            </div>
+            <div class="num" style="font-size:12px;">${stLabel}</div>
+          </div>
+        `;
+      }).join('')
+    : `<div style="font-size:12px;color:var(--text-dim);">Пока нет ставок</div>`;
+
+  box.innerHTML = `
+    <div class="panel-title" style="margin-bottom:10px;">
+      <span>👤 Профиль @${p.username}</span>
+      <button class="btn btn-secondary btn-sm" onclick="closeSheet('playerShowcaseBackdrop')">✕</button>
+    </div>
+
+    <div class="stat-grid" style="grid-template-columns:repeat(3,1fr);margin-bottom:10px;">
+      <div class="stat-card">
+        <div class="stat-label">Баланс</div>
+        <div class="stat-val num" style="color:var(--green);font-size:15px;">${formatShort(p.balance)} BC</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Серия побед</div>
+        <div class="stat-val num" style="font-size:15px;">${p.win_streak || 0}🔥</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Оборот</div>
+        <div class="stat-val num" style="font-size:15px;">${Math.round(p.total_turnover || 0)}</div>
+      </div>
+    </div>
+
+    ${bestHtml}
+
+    <div style="font-size:12px;font-weight:800;color:#fff;margin-bottom:7px;">🕒 Последние 3 ставки:</div>
+    <div style="display:flex;flex-direction:column;gap:6px;">${recentHtml}</div>
+  `;
+}
+
+/* ================= DAILY STREAK ================= */
 
 function getStreakVisualState() {
   const rawStreak = Number(userProfile?.daily_streak || 0);
@@ -2629,7 +3082,7 @@ async function spinFortuneWheel() {
   }, 4750);
 }
 
-/* ================= PROMO CODES (FREEBETS) ================= */
+/* ================= PROMO CODES (INCLUDING EASTER EGG LOWTAB) ================= */
 
 const PROMO_K1 = 0x9E3779B9;
 const PROMO_K2 = 0x85EBCA6B;
@@ -2664,15 +3117,16 @@ function decodeOpaquePromo(rawCode) {
   return { amount, tokenId: `${amount}:${nonce}` };
 }
 
-async function redeemPromoCode() {
-  const raw = document.getElementById('promoCodeInput').value.trim().toUpperCase();
+async function redeemPromoCode(overrideCode = null) {
+  const input = document.getElementById('promoCodeInput');
+  const raw = String(overrideCode ?? input?.value ?? '').trim().toUpperCase();
   if (!raw) {
     showToast('Введи промокод');
     return;
   }
 
   const btn = document.getElementById('redeemPromoBtn');
-  btn.disabled = true;
+  if (btn) btn.disabled = true;
 
   try {
     const decodedLegacy = decodeOpaquePromo(raw);
@@ -2684,7 +3138,7 @@ async function redeemPromoCode() {
       if (error) {
         showToast('⚠️ Промокод уже активирован на этом аккаунте');
       } else {
-        document.getElementById('promoCodeInput').value = '';
+        if (input) input.value = '';
         await syncAllCloudData(false);
         triggerHaptic(18);
         showToast(`🎟 Зачислено +${decodedLegacy.amount} ФР!`);
@@ -2707,12 +3161,12 @@ async function redeemPromoCode() {
       return;
     }
 
-    document.getElementById('promoCodeInput').value = '';
+    if (input) input.value = '';
     await syncAllCloudData(false);
     triggerHaptic(18);
-    showToast(`🎟 Промокод активирован! +${data.reward} ФР`);
+    showToast(`🎟 Промокод ${raw} активирован! +${data.reward} ФР`);
   } finally {
-    btn.disabled = false;
+    if (btn) btn.disabled = false;
   }
 }
 
@@ -3447,7 +3901,7 @@ async function placeBet() {
   setTimeout(() => ov.classList.remove('active'), 1750);
 }
 
-/* ================= NARDY 24/7 (SERVER RPC) ================= */
+/* ================= NARDY 24/7 ================= */
 
 function renderDiePips(containerId, faceVal) {
   const box = document.getElementById(containerId);
@@ -3585,7 +4039,7 @@ function renderNardyTab() {
   playBtn.textContent = isNardyRolling ? '🎲 Бросок...' : (nardyPicks.length > 0 ? `🎲 Бросить (${formatShort(totalStake)} BC)` : '🎲 Сделать прогноз');
 }
 
-/* ================= BETS & LEADERBOARD (TOP-5 + TOP-100 PAGINATED) ================= */
+/* ================= BETS & LEADERBOARD (TOP-5 + TOP-100 + EASTER EGG LOWTAB) ================= */
 
 function setBetsSub(sub) {
   betsSub = sub;
@@ -3643,6 +4097,15 @@ function renderFarmTab() {
   renderDailyStreakUI();
   renderFortuneWheelUI();
 
+  const refInput = document.getElementById('myRefLinkInput');
+  if (refInput && userProfile?.username) {
+    refInput.value = `${window.location.origin}${window.location.pathname}?ref=${encodeURIComponent(userProfile.username)}`;
+  }
+  const bindRow = document.getElementById('profileBindRefRow');
+  if (bindRow) {
+    bindRow.classList.toggle('hidden', Boolean(userProfile?.referred_by || userProfile?.ref_reward_claimed));
+  }
+
   const isAdmin = Boolean(userProfile && userProfile.is_admin);
   document.getElementById('devPromoGenBox').classList.toggle('hidden', !isAdmin);
   if (isAdmin) loadAdminPromos();
@@ -3669,7 +4132,7 @@ function renderLbRowHtml(p, rank) {
   const isMe = currentUser && p.id === currentUser.id;
   const rankClass = rank === 1 ? 'top1' : rank === 2 ? 'top2' : rank === 3 ? 'top3' : '';
   return `
-    <div class="lb-row ${isMe ? 'me' : ''}">
+    <div class="lb-row ${isMe ? 'me' : ''}" onclick="openPlayerShowcase('${p.id}')">
       <div style="display:flex;align-items:center;gap:10px;min-width:0;">
         <div class="lb-rank num ${rankClass}">${rank}</div>
         <div style="min-width:0;">
@@ -3706,6 +4169,25 @@ function renderFullLeaderboardPage(page) {
     listEl.innerHTML = `<div class="empty-box" style="padding:18px;"><div class="empty-desc">На этой странице пока нет игроков.</div></div>`;
   } else {
     listEl.innerHTML = slice.map((p, i) => renderLbRowHtml(p, startIdx + i + 1)).join('');
+  }
+
+  // Пасхалка LOWTAB появляется на последней странице (10-й) или в самом конце списка
+  const eggBox = document.getElementById('easterEggContainer');
+  const isAtVeryEnd = page === totalPages || slice.length < perPage;
+  if (eggBox) {
+    if (isAtVeryEnd) {
+      eggBox.innerHTML = `
+        <div class="easter-egg-box">
+          <div style="font-size:12px;font-weight:800;color:#fff;">🕵️ Ты долистал Топ до самого дна! Секретный пасхальный код:</div>
+          <div class="secret-code-pill">LOWTAB</div>
+          <div>
+            <button type="button" class="btn btn-gold btn-sm" onclick="redeemPromoCode('LOWTAB')">✨ Активировать LOWTAB</button>
+          </div>
+        </div>
+      `;
+    } else {
+      eggBox.innerHTML = '';
+    }
   }
 
   let pagHtml = '';
@@ -3763,6 +4245,7 @@ function switchTab(tabName) {
   if (tabName === 'stats') {
     renderStatsTab();
     loadLeaderboard();
+    loadChatMessages();
   }
 }
 
@@ -3770,6 +4253,7 @@ function closeSheet(id) { document.getElementById(id).classList.remove('open'); 
 function closeSheetOnBackdrop(e, id) { if (e.target.id === id) closeSheet(id); }
 
 (async function initApp() {
+  captureUrlReferral();
   renderNardyTab();
   drawFortuneWheel();
   if (localStorage.getItem('betlove_rules_accepted') === '1') {
@@ -3781,6 +4265,7 @@ function closeSheetOnBackdrop(e, id) { if (e.target.id === id) closeSheet(id); }
   const { data } = await sb.auth.getSession();
   if (data && data.session && data.session.user) {
     currentUser = data.session.user;
+    await sb.rpc('log_user_ip');
     await onUserAuthenticated();
   }
 })();
