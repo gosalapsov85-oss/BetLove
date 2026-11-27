@@ -59,7 +59,6 @@ function parseJsonArray(val) {
 function priceToOdd(priceRaw) {
   const p = Number(priceRaw);
   if (!Number.isFinite(p) || p <= 0.02 || p >= 0.98) return null;
-  // Букмекерская маржа ~7% (множитель 0.93), чтобы кэфы были как в БК (1.86/1.86 вместо 2.00/2.00)
   const odd = Number((0.93 / p).toFixed(2));
   return odd >= 1.03 && odd <= 35 ? odd : null;
 }
@@ -97,7 +96,6 @@ function parseMatchTitle(title = '') {
   return null;
 }
 
-// 1. Polymarket Gamma API: живые рыночные коэффициенты с маржой для CS2, Dota 2, Valorant и LoL
 async function fetchPolymarketEsports() {
   const tagQueries = new Map();
 
@@ -176,7 +174,6 @@ async function fetchPolymarketEsports() {
 
     const markets = Array.isArray(ev.markets) ? ev.markets : [];
 
-    // Ищем главный рынок победителя матча (Match Winner), исключая отдельные карты и тоталы
     let mainMarket = markets.find((m) => {
       if (m.closed) return false;
       const outcomes = parseJsonArray(m.outcomes);
@@ -200,13 +197,11 @@ async function fetchPolymarketEsports() {
 
     if (!mainMarket) continue;
 
-    // Реальное время начала матча (gameStartTime), а не дата создания рынка
     const rawStart = mainMarket.gameStartTime || ev.gameStartTime || ev.eventDate || ev.startTime || ev.endDate;
     if (!rawStart) continue;
     const startMs = new Date(rawStart).getTime();
     if (!Number.isFinite(startMs)) continue;
 
-    // Отсекаем все матчи, начавшиеся больше 4 часов назад (уже закончились)
     if (startMs < nowMs - 4 * 3600 * 1000) continue;
 
     const outcomesArr = parseJsonArray(mainMarket.outcomes);
@@ -226,7 +221,6 @@ async function fetchPolymarketEsports() {
 
     if (!p1 || !p2) continue;
 
-    // Отсекаем мёртвые рынки без ставок (ровно 0.50 / 0.50 -> 1.86 / 1.86 при нулевом объёме)
     const vol = Number(mainMarket.volumeNum ?? mainMarket.volume ?? ev.volume ?? 0);
     if (p1 === 1.86 && p2 === 1.86 && vol < 5) continue;
 
@@ -337,7 +331,6 @@ function getDecimalOdd(item) {
   return null;
 }
 
-// 2. SharpAPI: реальный классический спорт
 async function fetchSharpClassicSports() {
   if (!SHARPAPI_KEY) return [];
 
