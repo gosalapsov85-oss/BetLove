@@ -158,4 +158,19 @@ async function syncUpcomingFixtures() {
     return;
   }
 
-  const { error } =
+  const { error } = await sb.rpc('admin_upsert_events', { p_events: payload });
+  if (error) {
+    throw new Error('Supabase admin_upsert_events error: ' + error.message);
+  }
+  console.log(`Synced ${payload.length} upcoming fixtures with real odds from SharpAPI.`);
+}
+
+(async function main() {
+  try {
+    await syncUpcomingFixtures();
+    console.log('Sync completed successfully.');
+  } catch (err) {
+    console.error('Sync failed:', err.message);
+    process.exit(1);
+  }
+})();
