@@ -124,11 +124,10 @@ function pickPolymarketMainMarket(ev) {
   return mainMarket || null;
 }
 
-// 1. Polymarket Gamma API: живые рыночные коэффициенты с маржой для CS2, Dota 2, Valorant и LoL
+// 1. Polymarket Gamma API: живые рыночные коэффициенты с маржой для CS2 (включая Major), Dota 2, Valorant и LoL
 async function fetchPolymarketEsports() {
   const tagQueries = new Map();
 
-  // Получаем актуальные ID тегов прямо из /sports Polymarket
   try {
     const sports = await fetchGamma('/sports');
     for (const sp of extractArray(sports)) {
@@ -145,25 +144,21 @@ async function fetchPolymarketEsports() {
     console.warn('Gamma /sports warn:', err.message);
   }
 
-  const fallbackSlugs = [
-    { slug: 'counter-strike', category: 'CS2' },
-    { slug: 'counter-strike-2', category: 'CS2' },
-    { slug: 'cs2', category: 'CS2' },
-    { slug: 'cs-2', category: 'CS2' },
-    { slug: 'dota-2', category: 'Dota 2' },
-    { slug: 'dota', category: 'Dota 2' },
-    { slug: 'valorant', category: 'Valorant' },
-    { slug: 'league-of-legends', category: 'LoL' },
-    { slug: 'lol', category: 'LoL' },
-    { slug: 'esports', category: null }
+  const queries = [
+    { url: '/events?tag_slug=counter-strike-2&closed=false&limit=300', cat: 'CS2' },
+    { url: '/events?tag_slug=counter-strike&closed=false&limit=300', cat: 'CS2' },
+    { url: '/events?tag_slug=cs2&closed=false&limit=300', cat: 'CS2' },
+    { url: '/events?tag_slug=esports&closed=false&order=volume&ascending=false&limit=300', cat: null },
+    { url: '/events?tag_slug=dota-2&closed=false&limit=200', cat: 'Dota 2' },
+    { url: '/events?tag_slug=valorant&closed=false&limit=200', cat: 'Valorant' },
+    { url: '/events?tag_slug=league-of-legends&closed=false&limit=200', cat: 'LoL' }
   ];
 
   const rawEventsMap = new Map();
 
-  // Забираем без жёсткого active=true, чтобы цеплять и свежие прематч-рынки
   for (const [tagId, cat] of tagQueries.entries()) {
     try {
-      const list = await fetchGamma(`/events?tag_id=${tagId}&closed=false&limit=150`);
+      const list = await fetchGamma(`/events?tag_id=${tagId}&closed=false&limit=300`);
       for (const ev of extractArray(list)) {
         rawEventsMap.set(String(ev.id), { ev, hintCategory: cat });
       }
@@ -173,30 +168,18 @@ async function fetchPolymarketEsports() {
     await sleep(100);
   }
 
-  for (const fb of fallbackSlugs) {
+  for (const qItem of queries) {
     try {
-      const list = await fetchGamma(`/events?tag_slug=${fb.slug}&closed=false&limit=150`);
+      const list = await fetchGamma(qItem.url);
       for (const ev of extractArray(list)) {
         if (!rawEventsMap.has(String(ev.id))) {
-          rawEventsMap.set(String(ev.id), { ev, hintCategory: fb.category });
+          rawEventsMap.set(String(ev.id), { ev, hintCategory: qItem.cat });
         }
       }
     } catch (err) {
-      console.warn(`Gamma tag_slug=${fb.slug} warn:`, err.message);
+      console.warn(`Gamma ${qItem.url} warn:`, err.message);
     }
     await sleep(100);
-  }
-
-  // Страховочный запрос по всем свежим открытым событиям (ловит CS2, даже если тег сменился)
-  try {
-    const recentOpen = await fetchGamma('/events?closed=false&order=id&ascending=false&limit=250');
-    for (const ev of extractArray(recentOpen)) {
-      if (!rawEventsMap.has(String(ev.id))) {
-        rawEventsMap.set(String(ev.id), { ev, hintCategory: null });
-      }
-    }
-  } catch (err) {
-    console.warn('Gamma recentOpen warn:', err.message);
   }
 
   const results = [];
@@ -218,7 +201,6 @@ async function fetchPolymarketEsports() {
     const mainMarket = pickPolymarketMainMarket(ev);
     if (!mainMarket || mainMarket.closed) continue;
 
-    // Берём gameStartTime; если его нет — eventDate, startTime или endDate
     const rawStart = mainMarket.gameStartTime || ev.gameStartTime || ev.eventDate || ev.startTime || ev.endDate;
     if (!rawStart) continue;
     const startMs = new Date(rawStart).getTime();
@@ -244,7 +226,6 @@ async function fetchPolymarketEsports() {
 
     if (!p1 || !p2) continue;
 
-    // Отсекаем только полностью мёртвые рынки (0.50/0.50 -> 1.86/1.86 при нулевой ликвидности)
     const vol = Number(mainMarket.volumeNum ?? mainMarket.volume ?? ev.volume ?? 0);
     const liq = Number(mainMarket.liquidityNum ?? mainMarket.liquidity ?? ev.liquidity ?? 0);
     if (p1 === 1.86 && p2 === 1.86 && vol < 1 && liq < 1) continue;
