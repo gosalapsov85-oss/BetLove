@@ -168,7 +168,6 @@ function pickPolymarketMainMarket(ev) {
 }
 
 async function fetchPolymarketEsports() {
-  // Запрашиваем каждую дисциплину отдельно по её точному слагам
   const disciplineFeeds = [
     { url: '/events?tag_slug=counter-strike-2&closed=false&limit=300', cat: 'CS2' },
     { url: '/events?tag_slug=counter-strike&closed=false&limit=300', cat: 'CS2' },
@@ -208,12 +207,10 @@ async function fetchPolymarketEsports() {
     const seriesText = (ev.series || []).map((s) => `${s.title || ''} ${s.slug || ''}`).join(' ');
     const fullMeta = `${title} ${ev.slug || ''} ${tagsText} ${seriesText}`;
 
-    // Сначала проверяем явные признаки игры в тексте, затем берём категорию фида
     const detected = detectEsportsCategory(fullMeta);
     const category = detected || feedCategory;
     if (!category) continue;
 
-    // Если фид был CS2, но внутри явно написано Dota 2 — отправляем в Dota 2 (и наоборот)
     const parsed = parseMatchTitle(title);
     if (!parsed) continue;
 
@@ -248,7 +245,6 @@ async function fetchPolymarketEsports() {
     const liq = Number(mainMarket.liquidityNum ?? mainMarket.liquidity ?? ev.liquidity ?? 0);
     if (p1 === 1.86 && p2 === 1.86 && vol < 1 && liq < 1) continue;
 
-    // Чистое и понятное название турнира для каждой игры
     let tournament = parsed.extractedTournament || ev.series?.[0]?.title || '';
     tournament = tournament.replace(/^(?:Counter-Strike(?:\s*2)?|CS2|Dota\s*2|Valorant|LoL)\s*[:\-—]\s*/i, '').trim();
 
@@ -364,13 +360,14 @@ function parseTeams(eventName = '') {
 }
 
 function getDecimalOdd(item) {
+  // Берём consensus_odds в первую очередь, чтобы отсечь ошибочные выбросы (вроде 20.00) у отдельных БК
   const raw =
-    item?.best_odds?.decimal ??
     item?.consensus_odds?.decimal ??
+    item?.best_odds?.decimal ??
     item?.decimal ??
     item?.odds?.decimal;
   const n = Number(raw);
-  if (Number.isFinite(n) && n > 1.01 && n < 50) return Number(n.toFixed(2));
+  if (Number.isFinite(n) && n > 1.03 && n < 25) return Number(n.toFixed(2));
   return null;
 }
 
@@ -379,7 +376,7 @@ async function fetchSharpClassicSports() {
 
   const eventsTimeMap = new Map();
   try {
-    const rawEvents = await fetchSharp('/events?limit=500');
+    const rawEvents = await fetchSharp('/events?limit=600');
     for (const ev of extractArray(rawEvents)) {
       const id = String(ev.id ?? ev.event_id ?? '');
       const start = ev.start_time || ev.commence_time || ev.starts_at || ev.date || null;
@@ -393,7 +390,7 @@ async function fetchSharpClassicSports() {
 
   let oddsList = [];
   try {
-    const rawOdds = await fetchSharp('/odds/best?market_type=moneyline&limit=600');
+    const rawOdds = await fetchSharp('/odds/best?market_type=moneyline&limit=1000');
     oddsList = extractArray(rawOdds);
   } catch (err) {
     console.warn('SharpAPI /odds/best warn:', err.message);
@@ -404,9 +401,24 @@ async function fetchSharpClassicSports() {
 
   for (const item of oddsList) {
     const market = String(item.market_type ?? '').toLowerCase();
-    if (market.includes('spread') || market.includes('handicap') || market.includes('total') || market.includes('over') || market.includes('under')) {
+    const period = String(item.period ?? item.timeframe ?? 'full_time').toLowerCase();
+
+    // Пропускаем форы, тоталы и рынки на отдельные таймы/периоды
+    if (
+      market.includes('spread') ||
+      market.includes('handicap') ||
+      market.includes('total') ||
+      market.includes('over') ||
+      market.includes('under') ||
+      period.includes('half') ||
+      period.includes('1st') ||
+      period.includes('2nd') ||
+      period.includes('quarter') ||
+      period.includes('period')
+    ) {
       continue;
     }
+
     if (item.is_main_line === false) continue;
     if (isExcludedFromSharp(item.sport, item.league, item.event_name)) continue;
 
@@ -437,12 +449,17 @@ async function fetchSharpClassicSports() {
     const t1 = entry.team1.toLowerCase();
     const t2 = entry.team2.toLowerCase();
 
-    if (sel === t1 || sel.includes(t1) || t1.includes(sel)) {
+    // Сначала точное совпадение, чтобы "Genk II" и "Anderlecht II" не путались
+    if (sel === t1 || sel === 'home' || sel === '1') {
       entry.p1 = odd;
-    } else if (sel === t2 || sel.includes(t2) || t2.includes(sel)) {
+    } else if (sel === t2 || sel === 'away' || sel === '2') {
       entry.p2 = odd;
     } else if (sel === 'draw' || sel === 'tie' || sel === 'x') {
       entry.draw = odd;
+    } else if (sel.includes(t1) && !sel.includes(t2)) {
+      entry.p1 = odd;
+    } else if (sel.includes(t2) && !sel.includes(t1)) {
+      entry.p2 = odd;
     }
   }
 
@@ -452,11 +469,15 @@ async function fetchSharpClassicSports() {
   for (const [evId, g] of grouped.entries()) {
     if (!g.p1 || !g.p2) continue;
 
+    const tournament = formatLeagueName(g.league || g.sport || 'Турнир');
+    const category = mapClassicCategory(g.sport, g.league);
+
+    // В футболе в основной линии 1X2 обязательно должна быть ничья
+    if (category === 'Футбол' && !g.draw) continue;
+
     const startMs = g.start_time ? new Date(g.start_time).getTime() : nowMs + 7200000;
     if (Number.isFinite(startMs) && startMs < nowMs - 4 * 3600 * 1000) continue;
 
-    const tournament = formatLeagueName(g.league || g.sport || 'Турнир');
-    const category = mapClassicCategory(g.sport, g.league);
     const outcomes = [{ name: 'П1', odd: g.p1 }];
     if (g.draw) outcomes.push({ name: 'Х', odd: g.draw });
     outcomes.push({ name: 'П2', odd: g.p2 });
