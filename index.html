@@ -486,7 +486,6 @@
   .sport-tag { font-size: 9.5px; font-weight: 900; text-transform: uppercase; padding: 2px 6px; border-radius: 5px; background: var(--yellow-soft); color: var(--yellow); flex-shrink: 0; }
   .tourney-name { font-size: 13px; font-weight: 800; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .tourney-right { display: flex; align-items: center; gap: 6px; flex-shrink: 0; }
-  .tourney-outright-btn { border: 1px solid rgba(255, 214, 0, 0.4); background: var(--yellow-soft); color: var(--yellow); font-size: 10.5px; font-weight: 800; padding: 4px 8px; border-radius: 7px; cursor: pointer; }
 
   .chevron { font-size: 10px; color: var(--text-dim); transition: transform 0.2s ease; }
   .tourney-group.collapsed .chevron { transform: rotate(-90deg); }
@@ -514,7 +513,7 @@
     background: linear-gradient(180deg, rgba(255, 71, 87, 0.08) 0%, var(--surface-2) 100%);
   }
 
-  .match-head-wrap { cursor: pointer; min-width: 0; }
+  .match-head-wrap { min-width: 0; }
   .match-top { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 6px; font-size: 11px; color: var(--text-dim); }
   @media (min-width: 1024px) { .match-top { justify-content: flex-start; margin-bottom: 4px; } }
   .match-meta { display: flex; align-items: center; gap: 5px; flex-wrap: wrap; }
@@ -543,13 +542,12 @@
     font-weight: 800;
     padding: 5px 10px;
     border-radius: 8px;
-    background: var(--surface-3);
-    color: var(--text-dim);
-    border: 1px solid var(--border);
+    background: var(--yellow-soft);
+    color: var(--yellow);
+    border: 1px solid rgba(255, 214, 0, 0.35);
     cursor: pointer;
     white-space: nowrap;
   }
-  .extra-pill.has-extra { background: var(--yellow-soft); color: var(--yellow); border-color: rgba(255, 214, 0, 0.35); }
 
   .outcomes-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(96px, 1fr)); gap: 6px; }
   .odd-btn {
@@ -1084,7 +1082,7 @@
     <div id="tab-farm" class="hidden">
       <div class="panel" style="border-color: rgba(255, 214, 0, 0.28);">
         <div class="panel-title">
-          <span onclick="onPromoTitleTap()" style="cursor:pointer;user-select:none;">🎟 Промокоды на Фрибеты</span>
+          <span>🎟 Промокоды на Фрибеты</span>
           <div style="display:flex;align-items:center;gap:6px;">
             <button type="button" class="btn btn-secondary btn-sm" onclick="openPromoInfoModal()">Как получить?</button>
             <span class="fb-badge num" id="farmFreebetBadge">0 ФР</span>
@@ -1096,9 +1094,9 @@
           <button class="btn btn-gold" id="redeemPromoBtn" onclick="redeemPromoCode()">Активировать</button>
         </div>
 
-        <!-- DEV / ADMIN PROMO GENERATOR -->
+        <!-- ADMIN ONLY PROMO GENERATOR -->
         <div id="devPromoGenBox" class="hidden" style="margin-top:12px;padding-top:12px;border-top:1px dashed var(--border-strong);">
-          <div style="font-size:11px;color:var(--yellow);font-weight:800;margin-bottom:6px;">🔐 Генератор промокодов для зрителей / тестеров:</div>
+          <div style="font-size:11px;color:var(--yellow);font-weight:800;margin-bottom:6px;">👑 Админ-генератор промокодов:</div>
           <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:5px;margin-bottom:6px;">
             <button class="btn btn-secondary btn-sm" onclick="spawnDevPromo(100)">+100</button>
             <button class="btn btn-secondary btn-sm" onclick="spawnDevPromo(300)">+300</button>
@@ -1179,7 +1177,7 @@
 
       <div id="couponEmptyPc" class="coupon-empty-pc">
         <div style="font-size:22px;margin-bottom:6px;">🎯</div>
-        <div>Нажми на любой коэффициент в Линии или росписи, чтобы добавить исход в купон.</div>
+        <div>Нажми на любой коэффициент в Линии, чтобы добавить исход в купон.</div>
       </div>
 
       <div id="couponActiveBody" class="hidden">
@@ -1323,8 +1321,8 @@
         <div class="field">
           <label class="label">Формат</label>
           <select id="cFormat" class="select">
-            <option value="BO1">BO1 / Основное время</option>
-            <option value="BO3" selected>BO3 (+ Тотал и Точный счёт)</option>
+            <option value="BO1">BO1</option>
+            <option value="BO3" selected>BO3</option>
             <option value="BO5">BO5</option>
           </select>
         </div>
@@ -1403,7 +1401,6 @@ let lineSearchQuery = '';
 let activeSheetEventId = null;
 let couponWallet = 'bc';
 let authMode = 'login';
-let promoTitleTapCount = 0;
 
 // Nardy state
 let nardyChip = 100;
@@ -1519,15 +1516,9 @@ async function syncAllCloudData(notify = false) {
     sb.from('bets').select('*').eq('user_id', currentUser.id).order('created_at', { ascending: false }).limit(60)
   ]);
 
-  if (profRes.data) {
-    userProfile = profRes.data;
-  }
-  if (evRes.data) {
-    cloudEvents = evRes.data;
-  }
-  if (betsRes.data) {
-    cloudBets = betsRes.data;
-  }
+  if (profRes.data) userProfile = profRes.data;
+  if (evRes.data) cloudEvents = evRes.data;
+  if (betsRes.data) cloudBets = betsRes.data;
 
   renderHeader();
   renderAdminVisibility();
@@ -1544,6 +1535,7 @@ function renderAdminVisibility() {
   const isAdmin = Boolean(userProfile && userProfile.is_admin);
   document.getElementById('adminCreateBar').classList.toggle('hidden', !isAdmin);
   document.getElementById('adminClaimBox').classList.toggle('hidden', isAdmin);
+  document.getElementById('devPromoGenBox').classList.toggle('hidden', !isAdmin);
   document.getElementById('profileRoleBadge').textContent = isAdmin ? '👑 Администратор' : 'Игрок';
 }
 
@@ -1560,7 +1552,7 @@ async function claimAdminRights() {
   showToast('👑 Права администратора активированы!');
 }
 
-/* ================= PROMO CODES (SERVER VALIDATED) ================= */
+/* ================= PROMO CODES (SERVER VALIDATED, ADMIN-ONLY GENERATOR) ================= */
 
 const PROMO_K1 = 0x9E3779B9;
 const PROMO_K2 = 0x85EBCA6B;
@@ -1649,81 +1641,19 @@ function openPromoInfoModal() {
   document.getElementById('promoInfoSheetBackdrop').classList.add('open');
 }
 
-function onPromoTitleTap() {
-  promoTitleTapCount++;
-  if (promoTitleTapCount >= 5) {
-    document.getElementById('devPromoGenBox').classList.toggle('hidden');
-    promoTitleTapCount = 0;
-  }
-}
-
 function spawnDevPromo(amt) {
+  if (!userProfile || !userProfile.is_admin) return;
   const code = encodeOpaquePromo(amt);
   document.getElementById('devGeneratedCodeOut').value = code;
   document.getElementById('promoCodeInput').value = code;
   if (navigator.clipboard) navigator.clipboard.writeText(code).catch(() => {});
-  showToast(`🔐 Код на ${amt} ФР создан!`);
+  showToast(`👑 Код на ${amt} ФР создан и скопирован!`);
 }
 
-/* ================= AUTO MARKETS BUILDER FOR ADMIN ================= */
-
-function probToOddWithMargin(prob, margin = 0.055) {
-  const safeP = Math.min(0.95, Math.max(0.03, prob));
-  return Math.max(1.03, Number(((1 - margin) / safeP).toFixed(2)));
-}
-
-function buildAutoExtraMarkets(category, format, outcomes) {
-  const extras = [];
-  if (!Array.isArray(outcomes) || outcomes.length < 2) return extras;
-  const o1 = Number(outcomes[0].odd || 1.85);
-  const o2 = Number(outcomes[outcomes.length - 1].odd || 1.85);
-  const imp1 = 1 / Math.max(1.01, o1);
-  const imp2 = 1 / Math.max(1.01, o2);
-  const p = imp1 / (imp1 + imp2);
-  const q = 1 - p;
-
-  if ((category === 'CS2' || category === 'Dota 2') && format === 'BO3') {
-    const p20 = Math.pow(p, 1.78) * 0.88;
-    const p02 = Math.pow(q, 1.78) * 0.88;
-    const rem = Math.max(0.18, 1 - (p20 + p02));
-    const p21 = rem * (p / (p + q));
-    const p12 = rem * (q / (p + q));
-    extras.push(
-      {
-        id: 'mkt_tot25',
-        name: 'Тотал карт 2.5',
-        outcomes: [
-          { name: '2.5 Мен.', odd: probToOddWithMargin(p20 + p02, 0.05) },
-          { name: '2.5 Бол.', odd: probToOddWithMargin(p21 + p12, 0.05) }
-        ]
-      },
-      {
-        id: 'mkt_cs',
-        name: 'Точный счёт по картам',
-        outcomes: [
-          { name: '2:0', odd: probToOddWithMargin(p20, 0.09) },
-          { name: '2:1', odd: probToOddWithMargin(p21, 0.09) },
-          { name: '1:2', odd: probToOddWithMargin(p12, 0.09) },
-          { name: '0:2', odd: probToOddWithMargin(p02, 0.09) }
-        ]
-      }
-    );
-  } else if (category === 'Футбол') {
-    extras.push({
-      id: 'mkt_ftot',
-      name: 'Тотал голов 2.5',
-      outcomes: [
-        { name: '2.5 Мен.', odd: 1.85 },
-        { name: '2.5 Бол.', odd: 1.95 }
-      ]
-    });
-  }
-  return extras;
-}
-
-/* ================= ADMIN PUBLISH & SETTLE ================= */
+/* ================= ADMIN PUBLISH & SETTLE (NO AUTO MARKETS) ================= */
 
 function openCreateModal() {
+  if (!userProfile || !userProfile.is_admin) return;
   document.getElementById('createSheetBackdrop').classList.add('open');
 }
 
@@ -1751,7 +1681,7 @@ async function createManualEventCloud() {
     format,
     start_time: new Date(Date.now() + mins * 60000).toISOString(),
     outcomes,
-    extra_markets: buildAutoExtraMarkets(category, format, outcomes)
+    extra_markets: []
   }];
 
   const { error } = await sb.rpc('admin_upsert_events', { p_events: payload });
@@ -1798,9 +1728,7 @@ async function importJsonEventsCloud() {
         format: fmt,
         start_time: item.startTime ? new Date(item.startTime).toISOString() : new Date(Date.now() + 3600000).toISOString(),
         outcomes: outs,
-        extra_markets: Array.isArray(item.extraMarkets) && item.extraMarkets.length > 0
-          ? item.extraMarkets
-          : buildAutoExtraMarkets(cat, fmt, outs)
+        extra_markets: Array.isArray(item.extraMarkets) ? item.extraMarkets : []
       };
     });
 
@@ -2014,7 +1942,7 @@ function renderMatchCard(ev, mode, isAdmin) {
 
   return `
     <div class="match-card ${mode === 'live' ? 'live-card' : ''}">
-      <div class="match-head-wrap" onclick="openMatchSheet('${ev.id}')">
+      <div class="match-head-wrap" ${extrasCount > 0 ? `onclick="openMatchSheet('${ev.id}')" style="cursor:pointer;"` : ''}>
         <div class="match-top">
           <div class="match-meta">
             ${mode === 'live' ? '<span class="live-badge-pill">LIVE</span>' : ''}
@@ -2024,14 +1952,14 @@ function renderMatchCard(ev, mode, isAdmin) {
         </div>
         <div class="match-title-row">
           <div class="match-title">${ev.title}</div>
-          <div class="extra-pill ${extrasCount > 0 ? 'has-extra' : ''}">${extrasCount > 0 ? `+${extrasCount}` : 'Ещё'}</div>
+          ${extrasCount > 0 ? `<div class="extra-pill">+${extrasCount}</div>` : ''}
         </div>
         ${probBarHtml}
       </div>
 
-      <button class="extra-pill desktop-extra-btn ${extrasCount > 0 ? 'has-extra' : ''}" onclick="openMatchSheet('${ev.id}')">
-        ${extrasCount > 0 ? `+${extrasCount} рынков` : 'Роспись'}
-      </button>
+      ${extrasCount > 0 ? `
+        <button class="extra-pill desktop-extra-btn" onclick="openMatchSheet('${ev.id}')">+${extrasCount} рынков</button>
+      ` : '<div></div>'}
 
       <div>
         <div class="outcomes-grid">
@@ -2069,6 +1997,7 @@ function openMatchSheet(eventId) {
   if (!ev) return;
   const isLocked = getEffectiveEventStatus(ev) !== 'prematch';
   const extras = Array.isArray(ev.extra_markets) ? ev.extra_markets : [];
+  if (extras.length === 0) return;
 
   document.getElementById('matchSheetContent').innerHTML = `
     <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px;margin-bottom:8px;">
@@ -2079,7 +2008,7 @@ function openMatchSheet(eventId) {
       <button class="btn btn-secondary btn-sm" onclick="closeSheet('matchSheetBackdrop')">✕</button>
     </div>
     ${isLocked ? '<div style="font-size:11.5px;color:var(--red);margin-bottom:8px;">🔒 Матч начался, приём ставок закрыт сервером</div>' : ''}
-    ${extras.length === 0 ? '<div class="empty-box"><div class="empty-title">Нет доп. рынков</div></div>' : extras.map(mkt => `
+    ${extras.map(mkt => `
       <div class="sheet-mkt-box">
         <div class="sheet-mkt-head"><span>${mkt.name}</span></div>
         <div class="sheet-mkt-body">
@@ -2495,6 +2424,8 @@ function renderBetsTab() {
 
 function renderFarmTab() {
   document.getElementById('farmFreebetBadge').textContent = `${Math.round(userProfile?.freebet_balance || 0)} ФР`;
+  const isAdmin = Boolean(userProfile && userProfile.is_admin);
+  document.getElementById('devPromoGenBox').classList.toggle('hidden', !isAdmin);
 }
 
 async function loadLeaderboard() {
