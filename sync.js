@@ -73,21 +73,32 @@ function detectEsportsCategory(raw = '') {
 }
 
 function parseMatchTitle(title = '') {
-  const clean = String(title)
+  let clean = String(title)
     .replace(/^.*?(?:CS2|Dota 2|Valorant|LoL|Counter-Strike)\s*:\s*/i, '')
     .replace(/\s*\((?:BO\d|Best of \d)\)\s*/gi, '')
     .trim();
 
-  const parts = clean.split(/\s+(?:vs\.?|v\.?|—|-)\s+/i);
+  let extractedTournament = '';
+  const dashSplit = clean.split(/\s+[-—]\s+/);
+  if (dashSplit.length >= 2 && /\b(?:vs\.?|v\.?)\b/i.test(dashSplit[0])) {
+    clean = dashSplit[0].trim();
+    extractedTournament = dashSplit.slice(1).join(' — ').trim();
+  }
+
+  const parts = clean.split(/\s+(?:vs\.?|v\.?)\s+/i);
   if (parts.length === 2 && parts[0].trim() && parts[1].trim()) {
-    return { team1: parts[0].trim(), team2: parts[1].trim() };
+    return {
+      team1: parts[0].trim(),
+      team2: parts[1].trim(),
+      extractedTournament
+    };
   }
   return null;
 }
 
 // 1. Polymarket Gamma API: живые рыночные коэффициенты для CS2, Dota 2, Valorant и LoL (без ключа)
 async function fetchPolymarketEsports() {
-  const tagQueries = new Map(); // tagId -> category
+  const tagQueries = new Map();
 
   try {
     const sports = await fetchGamma('/sports');
@@ -105,7 +116,6 @@ async function fetchPolymarketEsports() {
     console.warn('Gamma /sports warn:', err.message);
   }
 
-  // Резервные слаги на случай, если /sports не отдал теги
   const fallbackSlugs = [
     { slug: 'cs2', category: 'CS2' },
     { slug: 'counter-strike-2', category: 'CS2' },
@@ -143,19 +153,20 @@ async function fetchPolymarketEsports() {
   }
 
   const results = [];
+  const nowMs = Date.now();
 
   for (const [evId, { ev, hintCategory }] of rawEventsMap.entries()) {
+    if (ev.closed || ev.archived) continue;
+
     const title = String(ev.title || '').trim();
     const tagsText = (ev.tags || []).map((t) => `${t.label || ''} ${t.slug || ''}`).join(' ');
     const category = detectEsportsCategory(`${title} ${ev.slug || ''} ${tagsText}`) || hintCategory;
     if (!category) continue;
 
-    // Отсекаем долгосрочные аутрайты ("Who will win the Major?"), берём только матчи X vs Y
-    const teams = parseMatchTitle(title);
-    if (!teams) continue;
+    const parsed = parseMatchTitle(title);
+    if (!parsed) continue;
 
     const markets = Array.isArray(ev.markets) ? ev.markets : [];
-    // Ищем главный рынок победителя матча (где 2 исхода: команда 1 и команда 2)
     let mainMarket = markets.find((m) => {
       if (m.closed) return false;
       const outcomes = parseJsonArray(m.outcomes);
@@ -174,17 +185,25 @@ async function fetchPolymarketEsports() {
 
     if (!mainMarket) continue;
 
+    // Реальное время старта матча (gameStartTime), а не дата создания рынка
+    const rawStart = mainMarket.gameStartTime || ev.gameStartTime || ev.eventDate || ev.startTime;
+    if (!rawStart) continue;
+    const startMs = new Date(rawStart).getTime();
+    if (!Number.isFinite(startMs)) continue;
+
+    // Отсекаем все матчи, начавшиеся больше 3.5 часов назад (уже закончились)
+    if (startMs < nowMs - 3.5 * 3600 * 1000) continue;
+
     const outcomesArr = parseJsonArray(mainMarket.outcomes);
     const pricesArr = parseJsonArray(mainMarket.outcomePrices);
 
     let p1 = priceToOdd(pricesArr[0]);
     let p2 = priceToOdd(pricesArr[1]);
 
-    // Сверяем порядок исходов с названиями команд в заголовке
     const out0 = String(outcomesArr[0] || '').toLowerCase();
     const out1 = String(outcomesArr[1] || '').toLowerCase();
-    const t1Low = teams.team1.toLowerCase();
-    const t2Low = teams.team2.toLowerCase();
+    const t1Low = parsed.team1.toLowerCase();
+    const t2Low = parsed.team2.toLowerCase();
 
     if ((out0.includes(t2Low) || t2Low.includes(out0)) && (out1.includes(t1Low) || t1Low.includes(out1))) {
       [p1, p2] = [p2, p1];
@@ -192,19 +211,22 @@ async function fetchPolymarketEsports() {
 
     if (!p1 || !p2) continue;
 
-    const startTime = ev.startTime || ev.endDate || new Date(Date.now() + 7200000).toISOString();
-    const seriesTitle = ev.series?.[0]?.title || ev.ticker || `${category} Pro Match`;
+    // Отсекаем пустые/зависшие рынки без ликвидности (ровно 2.00 / 2.00)
+    const vol = Number(mainMarket.volumeNum ?? mainMarket.volume ?? ev.volume ?? 0);
+    if (p1 === 2 && p2 === 2 && vol < 10) continue;
+
+    const tournament = parsed.extractedTournament || ev.series?.[0]?.title || `${category} Pro Match`;
     const formatMatch = `${title} ${mainMarket.question || ''}`.match(/\bBO[1235]\b/i);
     const format = formatMatch ? formatMatch[0].toUpperCase() : 'BO3';
 
     results.push({
       id: `pm_${category.toLowerCase().replace(/\s+/g, '')}_${evId}`,
       external_id: `pm_${evId}`,
-      title: `${teams.team1} vs ${teams.team2}`,
+      title: `${parsed.team1} vs ${parsed.team2}`,
       category,
-      tournament: String(seriesTitle).trim(),
+      tournament: String(tournament).trim(),
       format,
-      start_time: startTime,
+      start_time: new Date(startMs).toISOString(),
       status: 'prematch',
       outcomes: [
         { name: 'П1', odd: p1 },
@@ -214,7 +236,7 @@ async function fetchPolymarketEsports() {
     });
   }
 
-  console.log(`Polymarket Esports: synced ${results.length} real matches (CS2/Dota2/Val/LoL).`);
+  console.log(`Polymarket Esports: synced ${results.length} fresh matches (CS2/Dota2/Val/LoL).`);
   return results;
 }
 
@@ -372,8 +394,13 @@ async function fetchSharpClassicSports() {
   }
 
   const results = [];
+  const nowMs = Date.now();
+
   for (const [evId, g] of grouped.entries()) {
     if (!g.p1 || !g.p2) continue;
+
+    const startMs = g.start_time ? new Date(g.start_time).getTime() : nowMs + 7200000;
+    if (Number.isFinite(startMs) && startMs < nowMs - 3.5 * 3600 * 1000) continue;
 
     const tournament = formatLeagueName(g.league || g.sport || 'Турнир');
     const category = mapClassicCategory(g.sport, g.league);
@@ -388,7 +415,7 @@ async function fetchSharpClassicSports() {
       category,
       tournament,
       format: inferFormat(category, tournament),
-      start_time: g.start_time || new Date(Date.now() + 7200000).toISOString(),
+      start_time: new Date(startMs).toISOString(),
       status: 'prematch',
       outcomes,
       extra_markets: []
