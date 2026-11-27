@@ -66,7 +66,6 @@ function inferFormat(category = '', tournamentName = '') {
 function parseTeams(eventName = '') {
   const str = String(eventName).trim();
   if (!str) return null;
-  // Формат "Team A @ Team B" (Away @ Home) или "Team A vs Team B"
   if (str.includes(' @ ')) {
     const [away, home] = str.split(' @ ').map((s) => s.trim());
     if (home && away) return { team1: home, team2: away };
@@ -91,11 +90,34 @@ function getDecimalOdd(item) {
   return null;
 }
 
+async function fetchAllOdds() {
+  const all = [];
+  // Пробуем забрать до 3 страниц или большой лимит с фильтром по moneyline
+  const urls = [
+    '/odds/best?market_type=moneyline&limit=500',
+    '/odds/best?market_type=moneyline&limit=500&offset=500',
+    '/odds/best?limit=500'
+  ];
+
+  for (const u of urls) {
+    try {
+      const raw = await fetchSharp(u);
+      const list = extractArray(raw);
+      all.push(...list);
+      console.log(`Fetched ${list.length} rows from ${u}`);
+      if (list.length < 100 && u.includes('offset=500')) break;
+    } catch (err) {
+      console.warn(`Skip ${u}: ${err.message}`);
+    }
+    await sleep(300);
+  }
+  return all;
+}
+
 async function syncUpcomingFixtures() {
-  // 1. Загружаем время старта из /events
   const eventsTimeMap = new Map();
   try {
-    const rawEvents = await fetchSharp('/events?limit=200');
+    const rawEvents = await fetchSharp('/events?limit=500');
     for (const ev of extractArray(rawEvents)) {
       const id = String(ev.id ?? ev.event_id ?? '');
       const start = ev.start_time || ev.commence_time || ev.starts_at || ev.date || null;
@@ -108,10 +130,8 @@ async function syncUpcomingFixtures() {
 
   await sleep(300);
 
-  // 2. Загружаем лучшие кэфы с /odds/best
-  const rawOdds = await fetchSharp('/odds/best?limit=250');
-  const oddsList = extractArray(rawOdds);
-  console.log(`Loaded ${oddsList.length} odds entries from /odds/best.`);
+  const oddsList = await fetchAllOdds();
+  console.log(`Total odds entries collected: ${oddsList.length}`);
 
   const grouped = new Map();
 
@@ -122,82 +142,3 @@ async function syncUpcomingFixtures() {
 
     const evId = String(item.event_id ?? '');
     if (!evId) continue;
-
-    const teams = parseTeams(item.event_name);
-    if (!teams) continue;
-
-    const odd = getDecimalOdd(item);
-    if (!odd) continue;
-
-    if (!grouped.has(evId)) {
-      grouped.set(evId, {
-        team1: teams.team1,
-        team2: teams.team2,
-        sport: item.sport || '',
-        league: item.league || '',
-        start_time: item.start_time || eventsTimeMap.get(evId) || null,
-        p1: null,
-        p2: null,
-        draw: null
-      });
-    }
-
-    const entry = grouped.get(evId);
-    const sel = String(item.selection ?? '').trim().toLowerCase();
-    const t1 = entry.team1.toLowerCase();
-    const t2 = entry.team2.toLowerCase();
-
-    if (sel === t1 || sel.includes(t1) || t1.includes(sel)) {
-      entry.p1 = odd;
-    } else if (sel === t2 || sel.includes(t2) || t2.includes(sel)) {
-      entry.p2 = odd;
-    } else if (sel === 'draw' || sel === 'tie' || sel === 'x') {
-      entry.draw = odd;
-    }
-  }
-
-  const payload = [];
-  for (const [evId, g] of grouped.entries()) {
-    if (!g.p1 || !g.p2) continue;
-
-    const tournament = formatLeagueName(g.league || g.sport || 'Турнир');
-    const category = mapCategory(g.sport, g.league);
-    const outcomes = [{ name: 'П1', odd: g.p1 }];
-    if (g.draw) outcomes.push({ name: 'Х', odd: g.draw });
-    outcomes.push({ name: 'П2', odd: g.p2 });
-
-    payload.push({
-      id: 'ext_' + evId.replace(/[^a-zA-Z0-9_-]/g, '_'),
-      external_id: evId,
-      title: `${g.team1} vs ${g.team2}`,
-      category,
-      tournament,
-      format: inferFormat(category, tournament),
-      start_time: g.start_time || new Date(Date.now() + 7200000).toISOString(),
-      status: 'prematch',
-      outcomes,
-      extra_markets: []
-    });
-  }
-
-  if (payload.length === 0) {
-    console.log('No complete moneyline matches assembled.');
-    return;
-  }
-
-  const { error } = await sb.rpc('admin_upsert_events', { p_events: payload.slice(0, 40) });
-  if (error) {
-    throw new Error('Supabase admin_upsert_events error: ' + error.message);
-  }
-  console.log(`Synced ${Math.min(payload.length, 40)} matches with real team names and decimal odds.`);
-}
-
-(async function main() {
-  try {
-    await syncUpcomingFixtures();
-    console.log('Sync completed successfully.');
-  } catch (err) {
-    console.error('Sync failed:', err.message);
-    process.exit(1);
-  }
-})();
