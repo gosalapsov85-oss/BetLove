@@ -63,17 +63,38 @@ function priceToOdd(priceRaw) {
   return odd >= 1.03 && odd <= 35 ? odd : null;
 }
 
-// ВАЖНО: сначала проверяем Dota 2, Valorant и LoL, чтобы общие теги (PGL, ESL, BLAST) не улетали в CS2!
+// Строгое определение дисциплины без ложных срабатываний на общие турниры (PGL / ESL)
 function detectEsportsCategory(raw = '') {
   const s = String(raw).toLowerCase();
-  if (s.includes('dota') || s.includes('wallachia') || s.includes('dreamleague')) return 'Dota 2';
-  if (s.includes('valorant') || /\bvct\b/.test(s)) return 'Valorant';
-  if (s.includes('league of legends') || s.includes('league-of-legends') || /\blol\b|\blck\b|\blpl\b|\blec\b/.test(s)) return 'LoL';
+
+  // 1. Dota 2 (проверяем первой, так как PGL Wallachia / ESL One бывают и в Доте)
+  if (
+    s.includes('dota') ||
+    s.includes('wallachia') ||
+    s.includes('dreamleague') ||
+    s.includes('riyadh masters') ||
+    s.includes('the international') ||
+    s.includes('fissure playground') ||
+    s.includes('betboom dacha')
+  ) return 'Dota 2';
+
+  // 2. Valorant
+  if (s.includes('valorant') || /\bvct\b|\bvalorant champions\b/.test(s)) return 'Valorant';
+
+  // 3. League of Legends
+  if (
+    s.includes('league of legends') ||
+    s.includes('league-of-legends') ||
+    /\blol\b|\blck\b|\blpl\b|\blec\b|\blcs\b|\bmsi\b/.test(s)
+  ) return 'LoL';
+
+  // 4. Counter-Strike 2
   if (
     s.includes('counter-strike') ||
     s.includes('counter strike') ||
-    /\bcs2\b|\bcsgo\b|\bcs-2\b|\bpgl\b|\biem\b|\bblast\b|\besl\b|\bcct\b|\bmajor\b/.test(s)
+    /\bcs2\b|\bcsgo\b|\bcs-2\b|\biem\b|\bblast\b|\bcct\b|\bmajor singapore\b|\bpgl major\b/.test(s)
   ) return 'CS2';
+
   return null;
 }
 
@@ -81,10 +102,10 @@ function parseMatchTitle(title = '') {
   let raw = String(title).trim();
   let extractedTournament = '';
 
-  // 1. Убираем префиксы игры: "Counter-Strike:", "CS2:", "Counter-Strike 2 -" и т.д.
+  // Убираем префикс игры: "Counter-Strike:", "Dota 2:", "CS2 -"
   raw = raw.replace(/^(?:Counter-Strike(?:\s*2)?|CS2|CS:GO|Dota\s*2|Valorant|LoL)\s*[:\-—]\s*/i, '').trim();
 
-  // 2. Если есть двоеточие вида "PGL Major Singapore: Team A vs Team B"
+  // Формат "Турнир: Команда 1 vs Команда 2"
   const colonIdx = raw.indexOf(':');
   if (colonIdx !== -1) {
     const left = raw.slice(0, colonIdx).trim();
@@ -95,23 +116,20 @@ function parseMatchTitle(title = '') {
     }
   }
 
-  // 3. Отделяем хвост турнира после " - " или " — " или " | " (например: "NAVI vs G2 - PGL Major Singapore")
-  const tailSplit = raw.split(/\s+(?:[-—|])\s+/);
+  // Отделяем хвост турнира (в том числе слипшийся дефис вида "FlyQuest- PGL Major Singapore Stage 2")
+  const tailSplit = raw.split(/\s*[-—|]\s+/);
   if (tailSplit.length >= 2 && /\b(?:vs\.?|v\.?)\b/i.test(tailSplit[0])) {
     raw = tailSplit[0].trim();
     const tailText = tailSplit.slice(1).join(' — ').trim();
     if (!extractedTournament) extractedTournament = tailText;
   }
 
-  // 4. Вычищаем из названия матча скобки с форматом/стадией: (BO1), (BO3), (Major), (Stage 2)
   raw = raw
     .replace(/\s*\((?:BO\d|Best of \d|Map \d|Major|Stage \d|Playoffs|Group [A-Z])\)\s*/gi, '')
     .trim();
 
-  // 5. Делим строго по "vs" / "vs."
   const parts = raw.split(/\s+(?:vs\.?|v\.?)\s+/i);
   if (parts.length === 2 && parts[0].trim() && parts[1].trim()) {
-    // Дополнительная зачистка хвостов у второй команды (если написали "Team B Major" или "Team B BO3")
     const cleanT1 = parts[0].replace(/\s*\b(?:BO[1235]|Major)\b\s*$/i, '').trim();
     const cleanT2 = parts[1].replace(/\s*\b(?:BO[1235]|Major)\b\s*$/i, '').trim();
 
@@ -150,58 +168,30 @@ function pickPolymarketMainMarket(ev) {
 }
 
 async function fetchPolymarketEsports() {
-  const tagQueries = new Map();
-
-  try {
-    const sports = await fetchGamma('/sports');
-    for (const sp of extractArray(sports)) {
-      const label = `${sp.sport || ''} ${sp.label || ''} ${sp.slug || ''}`;
-      const cat = detectEsportsCategory(label);
-      if (cat && sp.tags) {
-        const tagList = String(sp.tags).split(',').map((t) => t.trim()).filter(Boolean);
-        for (const t of tagList) {
-          if (/^\d+$/.test(t)) tagQueries.set(t, cat);
-        }
-      }
-    }
-  } catch (err) {
-    console.warn('Gamma /sports warn:', err.message);
-  }
-
-  const queries = [
+  // Запрашиваем каждую дисциплину отдельно по её точному слагам
+  const disciplineFeeds = [
     { url: '/events?tag_slug=counter-strike-2&closed=false&limit=300', cat: 'CS2' },
     { url: '/events?tag_slug=counter-strike&closed=false&limit=300', cat: 'CS2' },
     { url: '/events?tag_slug=cs2&closed=false&limit=300', cat: 'CS2' },
-    { url: '/events?tag_slug=esports&closed=false&order=volume&ascending=false&limit=300', cat: null },
-    { url: '/events?tag_slug=dota-2&closed=false&limit=200', cat: 'Dota 2' },
+    { url: '/events?tag_slug=dota-2&closed=false&limit=250', cat: 'Dota 2' },
+    { url: '/events?tag_slug=dota&closed=false&limit=250', cat: 'Dota 2' },
     { url: '/events?tag_slug=valorant&closed=false&limit=200', cat: 'Valorant' },
     { url: '/events?tag_slug=league-of-legends&closed=false&limit=200', cat: 'LoL' }
   ];
 
   const rawEventsMap = new Map();
 
-  for (const [tagId, cat] of tagQueries.entries()) {
+  for (const feed of disciplineFeeds) {
     try {
-      const list = await fetchGamma(`/events?tag_id=${tagId}&closed=false&limit=300`);
+      const list = await fetchGamma(feed.url);
       for (const ev of extractArray(list)) {
-        rawEventsMap.set(String(ev.id), { ev, hintCategory: cat });
-      }
-    } catch (err) {
-      console.warn(`Gamma tag_id=${tagId} warn:`, err.message);
-    }
-    await sleep(100);
-  }
-
-  for (const qItem of queries) {
-    try {
-      const list = await fetchGamma(qItem.url);
-      for (const ev of extractArray(list)) {
-        if (!rawEventsMap.has(String(ev.id))) {
-          rawEventsMap.set(String(ev.id), { ev, hintCategory: qItem.cat });
+        const key = String(ev.id);
+        if (!rawEventsMap.has(key)) {
+          rawEventsMap.set(key, { ev, feedCategory: feed.cat });
         }
       }
     } catch (err) {
-      console.warn(`Gamma ${qItem.url} warn:`, err.message);
+      console.warn(`Gamma ${feed.url} warn:`, err.message);
     }
     await sleep(100);
   }
@@ -210,7 +200,7 @@ async function fetchPolymarketEsports() {
   const counts = { CS2: 0, 'Dota 2': 0, Valorant: 0, LoL: 0 };
   const nowMs = Date.now();
 
-  for (const [evId, { ev, hintCategory }] of rawEventsMap.entries()) {
+  for (const [evId, { ev, feedCategory }] of rawEventsMap.entries()) {
     if (ev.closed || ev.archived) continue;
 
     const title = String(ev.title || '').trim();
@@ -218,10 +208,12 @@ async function fetchPolymarketEsports() {
     const seriesText = (ev.series || []).map((s) => `${s.title || ''} ${s.slug || ''}`).join(' ');
     const fullMeta = `${title} ${ev.slug || ''} ${tagsText} ${seriesText}`;
 
-    // Определяем категорию по полному тексту, и только если не ясно — берём hintCategory
-    const category = detectEsportsCategory(fullMeta) || hintCategory;
+    // Сначала проверяем явные признаки игры в тексте, затем берём категорию фида
+    const detected = detectEsportsCategory(fullMeta);
+    const category = detected || feedCategory;
     if (!category) continue;
 
+    // Если фид был CS2, но внутри явно написано Dota 2 — отправляем в Dota 2 (и наоборот)
     const parsed = parseMatchTitle(title);
     if (!parsed) continue;
 
@@ -256,14 +248,17 @@ async function fetchPolymarketEsports() {
     const liq = Number(mainMarket.liquidityNum ?? mainMarket.liquidity ?? ev.liquidity ?? 0);
     if (p1 === 1.86 && p2 === 1.86 && vol < 1 && liq < 1) continue;
 
-    // Красивое название турнира (если это Major — подписываем PGL Major Singapore 2026)
+    // Чистое и понятное название турнира для каждой игры
     let tournament = parsed.extractedTournament || ev.series?.[0]?.title || '';
-    if (!tournament || /major/i.test(fullMeta) && !/major/i.test(tournament)) {
-      if (/singapore|major/i.test(fullMeta) && category === 'CS2') {
-        tournament = 'PGL Major Singapore 2026';
-      } else if (!tournament) {
-        tournament = `${category} Pro Match`;
-      }
+    tournament = tournament.replace(/^(?:Counter-Strike(?:\s*2)?|CS2|Dota\s*2|Valorant|LoL)\s*[:\-—]\s*/i, '').trim();
+
+    if (category === 'CS2' && /major|singapore/i.test(fullMeta)) {
+      if (/stage\s*2/i.test(fullMeta)) tournament = 'PGL Major Singapore — Stage 2';
+      else if (/stage\s*3|elimination/i.test(fullMeta)) tournament = 'PGL Major Singapore — Stage 3';
+      else if (/playoff/i.test(fullMeta)) tournament = 'PGL Major Singapore — Playoffs';
+      else tournament = 'PGL Major Singapore 2026';
+    } else if (!tournament || /^counter[-\s]?strike|^dota|^valorant|^league/i.test(tournament)) {
+      tournament = category === 'CS2' ? 'CS2 Pro Series' : `${category} Pro Series`;
     }
 
     const formatMatch = `${title} ${mainMarket.question || ''}`.match(/\bBO[1235]\b/i);
@@ -287,6 +282,13 @@ async function fetchPolymarketEsports() {
       extra_markets: []
     });
   }
+
+  results.sort((a, b) => {
+    const aMaj = /major/i.test(a.tournament) ? 0 : 1;
+    const bMaj = /major/i.test(b.tournament) ? 0 : 1;
+    if (aMaj !== bMaj) return aMaj - bMaj;
+    return new Date(a.start_time) - new Date(b.start_time);
+  });
 
   console.log(`Polymarket Esports: synced ${results.length} matches -> CS2: ${counts.CS2}, Dota 2: ${counts['Dota 2']}, Valorant: ${counts.Valorant}, LoL: ${counts.LoL}`);
   return results;
@@ -643,6 +645,36 @@ async function autoSettleFinishedEvents() {
   }
 }
 
+async function cleanupStaleOpenEvents(activeIdsSet) {
+  const { data: openRows } = await sb
+    .from('events')
+    .select('id, start_time')
+    .neq('status', 'finished');
+
+  if (!openRows || openRows.length === 0) return;
+
+  const nowMs = Date.now();
+  const toDelete = [];
+
+  for (const row of openRows) {
+    const id = String(row.id || '');
+    if (!id.startsWith('pm_') && !id.startsWith('ext_')) continue;
+
+    const startMs = new Date(row.start_time).getTime();
+    const isTooOld = Number.isFinite(startMs) && startMs < nowMs - 12 * 3600 * 1000;
+    const isGoneFromFeed = activeIdsSet.size > 0 && !activeIdsSet.has(id) && (!Number.isFinite(startMs) || startMs > nowMs);
+
+    if (isTooOld || isGoneFromFeed) {
+      toDelete.push(id);
+    }
+  }
+
+  if (toDelete.length > 0) {
+    await sb.from('events').delete().in('id', toDelete);
+    console.log(`Auto-cleaned ${toDelete.length} stale/outdated events.`);
+  }
+}
+
 (async function main() {
   try {
     await autoSettleFinishedEvents();
@@ -650,7 +682,11 @@ async function autoSettleFinishedEvents() {
     const esportsMatches = await fetchPolymarketEsports();
     const classicMatches = await fetchSharpClassicSports();
 
-    const combined = [...esportsMatches, ...classicMatches].slice(0, 160);
+    const combined = [...esportsMatches, ...classicMatches].slice(0, 180);
+    const activeIds = new Set(combined.map((m) => m.id));
+
+    await cleanupStaleOpenEvents(activeIds);
+
     if (combined.length === 0) {
       console.log('No matches to sync.');
       return;
