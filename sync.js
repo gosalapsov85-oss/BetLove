@@ -88,7 +88,7 @@ function detectEsportsCategory(raw = '') {
   if (
     s.includes('counter-strike') ||
     s.includes('counter strike') ||
-    /\bcs2\b|\bcsgo\b|\bcs-2\b|\biem\b|\bblast\b|\bcct\b|\bmajor singapore\b|\bpgl major\b/.test(s)
+    /\bcs2\b|\bcsgo\b|\bcs-2\b|\biem\b|\bblast\b|\bcct\b|\belisa\b|\byalla\b|\bthunderpick\b|\bmajor singapore\b|\bpgl major\b|\besl challenger\b/.test(s)
   ) return 'CS2';
 
   return null;
@@ -163,7 +163,6 @@ function pickPolymarketMainMarket(ev) {
 async function fetchPolymarketEsports() {
   const tagQueries = new Map();
 
-  // 1. Получаем актуальные tag_id из /sports (именно через них отдаются матчи Major)
   try {
     const sports = await fetchGamma('/sports');
     for (const sp of extractArray(sports)) {
@@ -181,10 +180,12 @@ async function fetchPolymarketEsports() {
   }
 
   const disciplineFeeds = [
-    { url: '/events?tag_slug=counter-strike-2&closed=false&limit=300', cat: 'CS2' },
-    { url: '/events?tag_slug=counter-strike&closed=false&limit=300', cat: 'CS2' },
-    { url: '/events?tag_slug=cs2&closed=false&limit=300', cat: 'CS2' },
-    { url: '/events?tag_slug=esports&closed=false&order=volume&ascending=false&limit=300', cat: null },
+    { url: '/events?tag_slug=counter-strike-2&closed=false&limit=400', cat: 'CS2' },
+    { url: '/events?tag_slug=counter-strike&closed=false&limit=400', cat: 'CS2' },
+    { url: '/events?tag_slug=cs2&closed=false&limit=400', cat: 'CS2' },
+    { url: '/events?tag_slug=cs&closed=false&limit=300', cat: 'CS2' },
+    { url: '/events?tag_slug=esports&closed=false&order=volume&ascending=false&limit=400', cat: null },
+    { url: '/events?tag_slug=esports&closed=false&order=id&ascending=false&limit=400', cat: null },
     { url: '/events?tag_slug=dota-2&closed=false&limit=250', cat: 'Dota 2' },
     { url: '/events?tag_slug=dota&closed=false&limit=250', cat: 'Dota 2' },
     { url: '/events?tag_slug=valorant&closed=false&limit=200', cat: 'Valorant' },
@@ -195,14 +196,14 @@ async function fetchPolymarketEsports() {
 
   for (const [tagId, cat] of tagQueries.entries()) {
     try {
-      const list = await fetchGamma(`/events?tag_id=${tagId}&closed=false&limit=300`);
+      const list = await fetchGamma(`/events?tag_id=${tagId}&closed=false&limit=400`);
       for (const ev of extractArray(list)) {
         rawEventsMap.set(String(ev.id), { ev, feedCategory: cat });
       }
     } catch (err) {
       console.warn(`Gamma tag_id=${tagId} warn:`, err.message);
     }
-    await sleep(100);
+    await sleep(90);
   }
 
   for (const feed of disciplineFeeds) {
@@ -217,7 +218,7 @@ async function fetchPolymarketEsports() {
     } catch (err) {
       console.warn(`Gamma ${feed.url} warn:`, err.message);
     }
-    await sleep(100);
+    await sleep(90);
   }
 
   const results = [];
@@ -247,7 +248,8 @@ async function fetchPolymarketEsports() {
     const startMs = new Date(rawStart).getTime();
     if (!Number.isFinite(startMs)) continue;
 
-    if (startMs < nowMs - 5 * 3600 * 1000) continue;
+    // Не отсекаем затянувшиеся BO3 (держим до 7 часов после старта)
+    if (startMs < nowMs - 7 * 3600 * 1000) continue;
 
     const outcomesArr = parseJsonArray(mainMarket.outcomes);
     const pricesArr = parseJsonArray(mainMarket.outcomePrices);
@@ -265,10 +267,6 @@ async function fetchPolymarketEsports() {
     }
 
     if (!p1 || !p2) continue;
-
-    const vol = Number(mainMarket.volumeNum ?? mainMarket.volume ?? ev.volume ?? 0);
-    const liq = Number(mainMarket.liquidityNum ?? mainMarket.liquidity ?? ev.liquidity ?? 0);
-    if (p1 === 1.86 && p2 === 1.86 && vol < 1 && liq < 1) continue;
 
     let tournament = parsed.extractedTournament || ev.series?.[0]?.title || '';
     tournament = tournament.replace(/^(?:Counter-Strike(?:\s*2)?|CS2|Dota\s*2|Valorant|LoL)\s*[:\-—]\s*/i, '').trim();
@@ -704,7 +702,6 @@ async function cleanupStaleOpenEvents(activeIdsSet, hasPmData, hasSharpData) {
     const isSharp = id.startsWith('ext_');
     if (!isPm && !isSharp) continue;
 
-    // Не удаляем матчи источника, если его фид временно вернул 0 записей
     if (isPm && !hasPmData) continue;
     if (isSharp && !hasSharpData) continue;
 
@@ -730,7 +727,7 @@ async function cleanupStaleOpenEvents(activeIdsSet, hasPmData, hasSharpData) {
     const esportsMatches = await fetchPolymarketEsports();
     const classicMatches = await fetchSharpClassicSports();
 
-    const combined = [...esportsMatches, ...classicMatches].slice(0, 180);
+    const combined = [...esportsMatches, ...classicMatches].slice(0, 300);
     const activeIds = new Set(combined.map((m) => m.id));
 
     await cleanupStaleOpenEvents(activeIds, esportsMatches.length > 0, classicMatches.length > 0);
