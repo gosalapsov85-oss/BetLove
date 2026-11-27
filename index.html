@@ -9,35 +9,7 @@
 <meta name="apple-mobile-web-app-title" content="BetLove">
 <title>BetLove — Симулятор ставок и Нарды 24/7</title>
 <link id="appFavicon" rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'%3E%3Crect width='512' height='512' rx='112' fill='%230c0d12'/%3E%3Cpath d='M256 420C256 420 84 312 84 188C84 128 130 84 188 84C222 84 246 102 256 122C266 102 290 84 324 84C382 84 428 128 428 188C428 312 256 420 256 420Z' stroke='%23ef4444' stroke-width='34' fill='rgba(239,68,68,0.18)'/%3E%3Cpath d='M105 292L332 148L280 226L416 186L186 338L238 258L105 292Z' fill='%23ffd600'/%3E%3C/svg%3E">
-<link id="appleTouchIcon" rel="apple-touch-icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'%3E%3Crect width='512' height='512' rx='112' fill='%230c0d12'/%3E%3Cpath d='M256 420C256 420 84 312 84 188C84 128 130 84 188 84C222 84 246 102 256 122C266 102 290 84 324 84C382 84 428 128 428 188C428 312 256 420 256 420Z' stroke='%23ef4444' stroke-width='34' fill='rgba(239,68,68,0.18)'/%3E%3Cpath d='M105 292L332 148L280 226L416 186L186 338L238 258L105 292Z' fill='%23ffd600'/%3E%3C/svg%3E">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script>
-(function injectPwaManifest() {
-  try {
-    const iconSvg = `<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512"><rect width="512" height="512" rx="112" fill="#0c0d12"/><path d="M256 420C256 420 84 312 84 188C84 128 130 84 188 84C222 84 246 102 256 122C266 102 290 84 324 84C382 84 428 128 428 188C428 312 256 420 256 420Z" stroke="#ef4444" stroke-width="34" fill="rgba(239,68,68,0.2)"/><path d="M105 292L332 148L280 226L416 186L186 338L238 258L105 292Z" fill="#ffd600"/></svg>`;
-    const iconUrl = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(iconSvg);
-    const manifest = {
-      name: 'BetLove',
-      short_name: 'BetLove',
-      description: 'Онлайн-симулятор ставок и Нарды 24/7',
-      start_url: './',
-      display: 'standalone',
-      orientation: 'portrait',
-      background_color: '#0b0c10',
-      theme_color: '#0b0c10',
-      icons: [
-        { src: iconUrl, sizes: '192x192', type: 'image/svg+xml', purpose: 'any maskable' },
-        { src: iconUrl, sizes: '512x512', type: 'image/svg+xml', purpose: 'any maskable' }
-      ]
-    };
-    const blob = new Blob([JSON.stringify(manifest)], { type: 'application/manifest+json' });
-    const link = document.createElement('link');
-    link.rel = 'manifest';
-    link.href = URL.createObjectURL(blob);
-    document.head.appendChild(link);
-  } catch (e) {}
-})();
-</script>
 <style>
   :root {
     --bg: #0b0c10;
@@ -67,6 +39,10 @@
     -webkit-tap-highlight-color: transparent;
   }
 
+  html {
+    scroll-behavior: smooth;
+  }
+
   html, body {
     background-color: var(--bg);
     color: var(--text);
@@ -86,7 +62,6 @@
     ::-webkit-scrollbar-thumb:hover { background: #363c50; }
   }
 
-  /* AUTH & BAN & RULES GATE SCREENS */
   .auth-gate {
     position: fixed;
     inset: 0;
@@ -144,7 +119,6 @@
     box-shadow: 0 6px 20px rgba(37, 99, 235, 0.35);
     margin-bottom: 10px;
   }
-  .btn-blue-rules:hover { filter: brightness(1.08); }
 
   .tiny-ref-link {
     background: none;
@@ -214,7 +188,6 @@
     margin-bottom: 12px;
   }
 
-  /* EASTER EGG SECRET BOX AT END OF TOP-100 */
   .easter-egg-box {
     margin-top: 12px;
     background: linear-gradient(135deg, rgba(37, 99, 235, 0.14) 0%, rgba(255, 214, 0, 0.12) 100%);
@@ -237,7 +210,6 @@
     margin: 6px 0 10px;
   }
 
-  /* ONLINE CHAT */
   .chat-feed-box {
     background: var(--surface-2);
     border: 1px solid var(--border);
@@ -271,7 +243,6 @@
     margin-bottom: 2px;
   }
 
-  /* BET PLACED CONFIRMATION OVERLAY */
   .bet-anim-overlay {
     position: fixed;
     inset: 0;
@@ -330,7 +301,6 @@
     background: var(--green-soft);
   }
 
-  /* TOP BAR */
   .topbar {
     position: sticky;
     top: 0;
@@ -409,7 +379,7 @@
   .wallet-curr { font-size: 10px; font-weight: 800; color: var(--green); }
   .fb-pill .wallet-curr { color: var(--yellow); }
 
-  /* RESPONSIVE WORKSPACE */
+  /* Левая колонка двигается вместе со страницей, правая колонка с купоном закреплена сбоку */
   .workspace {
     max-width: 580px;
     margin: 0 auto;
@@ -429,13 +399,10 @@
       display: flex;
       flex-direction: column;
       gap: 12px;
-      position: sticky;
-      top: 78px;
     }
     .mobile-only { display: none !important; }
   }
 
-  /* LEFT SIDEBAR */
   .nav-card {
     background: var(--surface-1);
     border: 1px solid var(--border);
@@ -470,7 +437,6 @@
   .sport-side-btn:hover { background: var(--surface-2); color: #fff; }
   .sport-side-btn.active { background: var(--surface-3); color: var(--yellow); font-weight: 800; }
 
-  /* SUB-TABS */
   .mode-switch-3 {
     display: grid;
     grid-template-columns: 1fr 1fr 1.15fr;
@@ -511,7 +477,6 @@
   .live-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--red); animation: pulse 1.4s infinite; }
   @keyframes pulse { 0%, 100% { opacity: 1; transform: scale(1); } 50% { opacity: 0.35; transform: scale(0.8); } }
 
-  /* ADMIN ADD MATCH BAR */
   .line-create-bar {
     width: 100%;
     border: 1px solid rgba(255, 214, 0, 0.35);
@@ -528,7 +493,6 @@
     cursor: pointer;
   }
 
-  /* ADMIN BOOKMAKER FILTER BAR */
   .admin-bk-bar {
     background: var(--surface-1);
     border: 1px solid rgba(255, 214, 0, 0.25);
@@ -572,7 +536,6 @@
   }
   .filter-chip.active { background: var(--yellow); border-color: var(--yellow); color: #0b0c10; font-weight: 800; }
 
-  /* DAILY STREAK & CASINO WHEEL */
   .streak-grid {
     display: grid;
     grid-template-columns: repeat(5, 1fr);
@@ -586,21 +549,12 @@
     padding: 9px 4px;
     text-align: center;
     position: relative;
-    transition: all 0.2s ease;
   }
-  .streak-day-box.done {
-    background: var(--green-soft);
-    border-color: rgba(0, 200, 117, 0.4);
-  }
+  .streak-day-box.done { background: var(--green-soft); border-color: rgba(0, 200, 117, 0.4); }
   .streak-day-box.ready {
     background: linear-gradient(180deg, rgba(255, 214, 0, 0.22) 0%, rgba(255, 214, 0, 0.06) 100%);
     border-color: var(--yellow);
     box-shadow: 0 0 18px rgba(255, 214, 0, 0.25);
-    animation: readyPulse 1.8s infinite;
-  }
-  @keyframes readyPulse {
-    0%, 100% { transform: translateY(0); }
-    50% { transform: translateY(-2px); }
   }
   .streak-day-lbl { font-size: 10px; color: var(--text-dim); font-weight: 700; margin-bottom: 3px; }
   .streak-day-val { font-size: 13px; font-weight: 900; color: #fff; }
@@ -664,15 +618,6 @@
     border-top: 26px solid #ffd600;
     filter: drop-shadow(0 4px 8px rgba(0, 0, 0, 0.85));
     z-index: 15;
-    transform-origin: 50% 4px;
-  }
-  .wheel-pointer.tick {
-    animation: pointerTick 0.11s ease-out;
-  }
-  @keyframes pointerTick {
-    0% { transform: translateX(-50%) rotate(0deg); }
-    40% { transform: translateX(-50%) rotate(-24deg); }
-    100% { transform: translateX(-50%) rotate(0deg); }
   }
   .wheel-hub {
     position: absolute;
@@ -707,7 +652,6 @@
     background: rgba(255, 214, 0, 0.1);
   }
 
-  /* NARDY 24/7 */
   .nardy-stage {
     background: radial-gradient(circle at 50% 35%, #1b2e2d 0%, #111618 75%);
     border: 1px solid rgba(45, 212, 191, 0.25);
@@ -772,7 +716,6 @@
   .chip-btn { border: 1px solid var(--border); background: var(--surface-2); color: #fff; border-radius: 8px; padding: 8px 4px; font-size: 12px; font-weight: 800; cursor: pointer; }
   .chip-btn.active { background: var(--yellow); color: #0b0c10; border-color: var(--yellow); }
 
-  /* TOURNAMENT GROUP & MATCH CARD */
   .tourney-group {
     background: var(--surface-1);
     border: 1px solid var(--border);
@@ -892,7 +835,6 @@
     flex-wrap: wrap;
   }
 
-  /* PROMO & USER MODERATION LIST */
   .promo-admin-grid {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
@@ -912,7 +854,6 @@
     flex-wrap: wrap;
   }
 
-  /* PAGINATION BAR */
   .pagination-bar {
     display: flex;
     flex-wrap: wrap;
@@ -937,7 +878,6 @@
     border-color: var(--yellow);
   }
 
-  /* ADAPTIVE COUPON */
   .coupon-fab {
     position: fixed;
     bottom: calc(78px + var(--nav-safe-bottom));
@@ -959,7 +899,6 @@
     cursor: pointer;
     z-index: 95;
   }
-  .coupon-fab.in-sheet-mode { bottom: calc(14px + var(--nav-safe-bottom)); }
   @media (min-width: 1024px) { .coupon-fab { display: none !important; } }
 
   .coupon-wrapper { position: fixed; inset: 0; background: rgba(0, 0, 0, 0.8); backdrop-filter: blur(6px); z-index: 110; display: none; align-items: flex-end; justify-content: center; }
@@ -980,13 +919,22 @@
 
   .coupon-empty-pc { display: none; }
   @media (min-width: 1024px) {
-    .coupon-wrapper { position: sticky; top: 78px; inset: auto; background: transparent; backdrop-filter: none; z-index: 20; display: block !important; }
+    .coupon-wrapper {
+      position: sticky;
+      top: 78px;
+      inset: auto;
+      max-height: calc(100vh - 96px);
+      overflow-y: auto;
+      background: transparent;
+      backdrop-filter: none;
+      z-index: 20;
+      display: block !important;
+    }
     .coupon-box { max-width: 100%; max-height: none; background: var(--surface-1); border: 1px solid var(--border); border-radius: var(--radius); padding: 16px; animation: none; }
     .coupon-box .sheet-handle { display: none; }
     .coupon-empty-pc { display: block; text-align: center; padding: 34px 14px; color: var(--text-dim); font-size: 12.5px; border: 1px dashed var(--border-strong); border-radius: 12px; }
   }
 
-  /* FLOATING MOBILE DOCK */
   .bottom-nav {
     position: fixed;
     bottom: calc(8px + var(--nav-safe-bottom));
@@ -1030,11 +978,10 @@
   .nav-icon { font-size: 17px; line-height: 1; }
   .nav-badge { position: absolute; top: 4px; right: 18%; background: var(--yellow); color: #0b0c10; font-size: 9px; font-weight: 900; padding: 1px 5px; border-radius: 99px; }
 
-  /* SHEETS & MODALS */
   .sheet-backdrop { position: fixed; inset: 0; background: rgba(0, 0, 0, 0.8); backdrop-filter: blur(6px); z-index: 80; display: none; align-items: flex-end; justify-content: center; }
   .sheet-backdrop.open { display: flex; }
   #createSheetBackdrop { z-index: 105; }
-  #promoInfoSheetBackdrop, #refFriendSheetBackdrop, #playerShowcaseBackdrop { z-index: 130; }
+  #promoInfoSheetBackdrop, #playerShowcaseBackdrop { z-index: 130; }
   #rulesSheetBackdrop { z-index: 9800; }
   #fullLeaderboardBackdrop { z-index: 120; }
 
@@ -1058,7 +1005,6 @@
   }
   .sheet-handle { width: 36px; height: 4px; background: rgba(255,255,255,0.2); border-radius: 99px; margin: 0 auto 12px; }
 
-  /* PANELS & FORM CONTROLS */
   .panel {
     background: var(--surface-1);
     border: 1px solid var(--border);
@@ -1111,7 +1057,6 @@
   .empty-title { font-size: 14.5px; font-weight: 800; color: var(--text); margin-bottom: 5px; }
   .empty-desc { font-size: 12px; line-height: 1.45; }
 
-  /* LEADERBOARD & STATS */
   .stat-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; margin-bottom: 10px; }
   @media (min-width: 1024px) { .stat-grid { grid-template-columns: repeat(4, 1fr); } }
   .stat-card { background: var(--surface-1); border: 1px solid var(--border); border-radius: 12px; padding: 11px 12px; }
@@ -1184,7 +1129,7 @@
 </head>
 <body>
 
-<!-- AUTH GATE -->
+<!-- AUTH GATE (Рефералка только на этапе регистрации) -->
 <div id="authGate" class="auth-gate">
   <div class="auth-card">
     <div class="auth-logo-wrap">
@@ -1208,7 +1153,7 @@
     </div>
 
     <div id="refBannerBox" class="hidden" style="background:var(--green-soft);border:1px solid rgba(0,200,117,0.35);border-radius:10px;padding:8px 11px;font-size:11.5px;color:var(--green);margin-bottom:10px;">
-      🎁 Приглашение от <strong id="refBannerNick">@friend</strong> • Бонус +300 BC после входа
+      🎁 Приглашение от <strong id="refBannerNick">@friend</strong> • Бонус +300 BC после регистрации
     </div>
 
     <div class="field">
@@ -1219,6 +1164,11 @@
     <div class="field">
       <label class="label">Пароль (от 6 символов)</label>
       <input id="authPassword" type="password" class="input" placeholder="••••••" autocomplete="current-password">
+    </div>
+
+    <div id="signupRefField" class="field hidden">
+      <label class="label">Ник пригласившего друга (необязательно)</label>
+      <input id="signupRefInput" class="input" placeholder="Ник друга (только при регистрации)">
     </div>
 
     <button type="button" class="btn-blue-rules" onclick="openRulesModal(false)">
@@ -1234,15 +1184,11 @@
 
     <button id="authSubmitBtn" class="btn btn-gold btn-full" onclick="submitCloudAuth()">Войти в аккаунт</button>
 
-    <div style="text-align:center;margin-top:8px;">
-      <button type="button" class="tiny-ref-link" onclick="openRefFriendModal()">Пришли от друга? Указать ник</button>
-    </div>
-
-    <div id="authErrorMsg" style="font-size:11.5px;color:var(--red);text-align:center;margin-top:6px;min-height:16px;"></div>
+    <div id="authErrorMsg" style="font-size:11.5px;color:var(--red);text-align:center;margin-top:8px;min-height:16px;"></div>
   </div>
 </div>
 
-<!-- MANDATORY RULES GATE FOR EXISTING USERS -->
+<!-- MANDATORY RULES GATE -->
 <div id="rulesGate" class="auth-gate hidden">
   <div class="auth-card" style="max-width:440px;">
     <div style="text-align:center;margin-bottom:10px;">
@@ -1291,7 +1237,7 @@
   </div>
 </div>
 
-<!-- BET PLACED CONFIRMATION OVERLAY -->
+<!-- CONFIRMATION OVERLAY -->
 <div id="betAnimOverlay" class="bet-anim-overlay" onclick="this.classList.remove('active')">
   <div class="bet-ticket-pop">
     <div class="ticket-check-ring">✓</div>
@@ -1342,10 +1288,9 @@
 
 <div id="toast" class="toast"></div>
 
-<!-- WORKSPACE -->
 <div class="workspace">
 
-  <!-- LEFT SIDEBAR (PC) -->
+  <!-- LEFT SIDEBAR (PC — прокручивается вместе со всей страницей) -->
   <aside class="left-sidebar">
     <div class="nav-card">
       <button class="side-nav-btn active" data-tab="events" onclick="switchTab('events')">
@@ -1387,6 +1332,16 @@
         </button>
       </div>
 
+      <!-- Две плашки внутри вкладки Лайв: Сейчас и Завершённые за 24 часа -->
+      <div id="liveSubTabsBar" class="mode-switch hidden" style="margin-bottom:10px;">
+        <button type="button" class="mode-btn active" id="liveTabNowBtn" onclick="setLiveSubTab('now')">
+          🔴 Сейчас (<span id="liveNowCountBadge" class="num">0</span>)
+        </button>
+        <button type="button" class="mode-btn" id="liveTabFinished24Btn" onclick="setLiveSubTab('finished24')">
+          ✅ Завершённые за 24 часа (<span id="liveFin24CountBadge" class="num">0</span>)
+        </button>
+      </div>
+
       <div id="lineLiveWrapper">
         <button id="adminCreateBar" class="line-create-bar hidden" onclick="openCreateModal()">
           <span>👑 Админ: добавить матч или загрузить JSON</span>
@@ -1425,9 +1380,9 @@
         </div>
         <div class="filter-bar mobile-only" id="mobSportFilterBar"></div>
 
-        <div id="tournamentFilterRow" style="display:flex;gap:6px;margin-bottom:10px;align-items:center;">
-          <button id="btnMajorOnly" class="filter-chip" onclick="toggleMajorOnly()" style="flex-shrink:0;">🏆 Только Major</button>
-          <select id="tournamentSelectFilter" class="select" onchange="setTournamentFilter(this.value)" style="padding:6px 10px;font-size:12px;">
+        <!-- Фильтр турниров (кнопка Только Major удалена) -->
+        <div id="tournamentFilterRow" style="margin-bottom:10px;">
+          <select id="tournamentSelectFilter" class="select" onchange="setTournamentFilter(this.value)" style="padding:7px 11px;font-size:12px;">
             <option value="all">Все турниры / лиги</option>
           </select>
         </div>
@@ -1435,7 +1390,7 @@
         <div id="eventsContainer"></div>
       </div>
 
-      <!-- NARDY 24/7 -->
+      <!-- NARDY 24/7 + Результаты за 24 часа с исходным кэфом -->
       <div id="nardyWrapper" class="hidden">
         <div class="nardy-stage">
           <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
@@ -1477,9 +1432,7 @@
         </div>
 
         <div class="nardy-market-card">
-          <div class="panel-title" style="margin-bottom:8px;">
-            <span>Большее число на кубике</span>
-          </div>
+          <div class="panel-title" style="margin-bottom:8px;"><span>Большее число на кубике</span></div>
           <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;" id="nardyHigherGrid"></div>
         </div>
 
@@ -1493,9 +1446,7 @@
         </div>
 
         <div class="nardy-market-card">
-          <div class="panel-title" style="margin-bottom:8px;">
-            <span>Тотал</span>
-          </div>
+          <div class="panel-title" style="margin-bottom:8px;"><span>Тотал</span></div>
           <div id="nardyTotalsContainer"></div>
         </div>
 
@@ -1521,6 +1472,16 @@
             <button class="chip-btn" onclick="selectNardyChip(2500)">2500</button>
           </div>
         </div>
+
+        <!-- Результаты игр за 24 часа с исходным кэфом -->
+        <div class="panel" style="margin-top:10px;">
+          <div class="panel-title">
+            <span>🕒 Результаты игр за 24 часа (с исходным кэфом)</span>
+            <span class="fb-badge">24H</span>
+          </div>
+          <div class="panel-sub">Завершённые ставки и броски за последние сутки с указанием исходного коэффициента.</div>
+          <div id="results24hContainer" style="display:flex;flex-direction:column;gap:7px;"></div>
+        </div>
       </div>
     </div>
 
@@ -1545,19 +1506,18 @@
           <span class="fb-badge num" id="streakBadgeText" style="background:var(--green-soft);color:var(--green);border-color:rgba(0,200,117,0.35);">День 1</span>
         </div>
         <div class="panel-sub">Забирай награду каждый день: 100 → 200 → 300 → 400 → и далее всегда 500 BC!</div>
-
         <div class="streak-grid" id="streakDaysGrid"></div>
-
         <button class="btn btn-primary btn-full" id="claimStreakBtn" onclick="claimDailyStreak()">🎁 Забрать ежедневный бонус</button>
       </div>
 
+      <!-- Колесо можно крутить даже на КД; начисление за спин идёт по серверному КД -->
       <div class="wheel-casino-card">
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;">
-          <strong style="font-size:15px;color:#fff;">🎡 Колесо Удачи (раз в день)</strong>
+          <strong style="font-size:15px;color:#fff;">🎡 Колесо Удачи</strong>
           <span class="fb-badge num" id="wheelStatusBadge">Готово</span>
         </div>
         <div style="font-size:12px;color:var(--text-dim);margin-bottom:8px;">
-          Испытай удачу и выиграй до <strong style="color:var(--yellow);">1500 BC</strong> на основной счёт!
+          Можно крутить в любое время • Награда до <strong style="color:var(--yellow);">1500 BC</strong> начисляется раз в 20ч.
         </div>
 
         <div class="wheel-stage">
@@ -1590,7 +1550,7 @@
         </div>
 
         <button class="btn btn-gold btn-full" id="spinWheelBtn" onclick="spinFortuneWheel()" style="font-size:14px;padding:12px;">
-          🎰 Крутить колесо бесплатно
+          🎰 Крутить колесо
         </button>
       </div>
 
@@ -1609,32 +1569,27 @@
         </div>
       </div>
 
-      <!-- REFERRAL BOX IN BONUSES -->
       <div class="panel" style="border-color: rgba(0, 200, 117, 0.28);">
         <div class="panel-title">
-          <span>🤝 Реферальная программа</span>
+          <span>🤝 Реферальная ссылка</span>
           <span class="fb-badge num">+500 BC</span>
         </div>
         <div class="panel-sub">
-          +300 BC другу при старте • +500 BC тебе за приглашение • +2% от проигранных ставок друга.
+          Привязка друга работает при регистрации. Твоя ссылка для приглашения:
         </div>
-        <div class="row-2" style="margin-bottom:8px;">
+        <div class="row-2">
           <input id="myRefLinkInput" class="input" readonly style="font-size:11.5px;">
           <button class="btn btn-primary" onclick="copyMyRefLink()">📋 Копировать</button>
         </div>
-        <div id="profileBindRefRow" class="row-2">
-          <input id="profileRefNickInput" class="input" placeholder="Ник пригласившего друга...">
-          <button class="btn btn-secondary" onclick="bindReferrerFromProfile()">Привязать ник</button>
-        </div>
       </div>
 
-      <!-- ADMIN ONLY PROMO CREATOR & LIST -->
+      <!-- ADMIN ONLY: PROMO CREATOR & DELETE -->
       <div id="devPromoGenBox" class="panel hidden" style="border-color: rgba(255, 214, 0, 0.35);">
         <div class="panel-title">
-          <span style="color:var(--yellow);">👑 Админ: создать промокод</span>
+          <span style="color:var(--yellow);">👑 Админ: промокоды</span>
           <span style="font-size:11px;color:var(--text-dim);">1 раз на аккаунт</span>
         </div>
-        <div class="panel-sub">Укажи лимит активаций и/или дату окончания действия промокода.</div>
+        <div class="panel-sub">Создавай и удаляй промокоды в базе.</div>
 
         <div class="promo-admin-grid">
           <div>
@@ -1667,7 +1622,7 @@
       </div>
     </div>
 
-    <!-- TAB 4: LEADERBOARD, CHAT, MODERATION & PROFILE -->
+    <!-- TAB 4: STATS BY DISCIPLINE, LEADERBOARD, CHAT, MODERATION & PROFILE -->
     <div id="tab-stats" class="hidden">
       <div class="stat-grid">
         <div class="stat-card">
@@ -1688,7 +1643,16 @@
         </div>
       </div>
 
-      <!-- TOP 5 PREVIEW + BUTTON TO OPEN FULL TOP-100 -->
+      <!-- Статистика по дисциплинам -->
+      <div class="panel">
+        <div class="panel-title">
+          <span>📊 Статистика по дисциплинам</span>
+          <span class="fb-badge">ПРОФИЛЬ</span>
+        </div>
+        <div class="panel-sub">Количество ставок, оборот и чистый профит по направлениям.</div>
+        <div id="disciplineStatsContainer" style="display:flex;flex-direction:column;gap:6px;"></div>
+      </div>
+
       <div class="panel">
         <div class="panel-title">
           <span>🏆 Топ-5 игроков</span>
@@ -1701,7 +1665,6 @@
         <div id="leaderboardTop5Container"></div>
       </div>
 
-      <!-- LIVE ONLINE CHAT -->
       <div class="panel">
         <div class="panel-title">
           <span>💬 Общий чат игроков</span>
@@ -1715,7 +1678,6 @@
         </div>
       </div>
 
-      <!-- ADMIN ONLY: USER MODERATION + BANNED LIST -->
       <div id="adminUsersModBox" class="panel hidden" style="border-color: rgba(255, 214, 0, 0.3);">
         <div class="panel-title">
           <span style="color:var(--yellow);">🛡 Админ: управление игроками</span>
@@ -1760,12 +1722,12 @@
         <button class="btn btn-danger btn-sm btn-full" onclick="logoutCloudUser()">🚪 Выйти из аккаунта</button>
       </div>
 
-      <div class="build-footer">Сборка приложения: 2.0 бета • Cloud Sync</div>
+      <div class="build-footer">Сборка приложения: 2.1 бета • Cloud Sync</div>
     </div>
 
   </main>
 
-  <!-- COUPON -->
+  <!-- RIGHT COUPON (Закреплена на ПК при прокрутке страницы) -->
   <aside id="couponWrapper" class="coupon-wrapper" onclick="closeCouponOnBackdrop(event)">
     <div class="coupon-box">
       <div class="sheet-handle"></div>
@@ -1854,24 +1816,7 @@
   </button>
 </nav>
 
-<!-- REFERRAL FRIEND PICKER MODAL -->
-<div id="refFriendSheetBackdrop" class="sheet-backdrop" onclick="closeSheetOnBackdrop(event, 'refFriendSheetBackdrop')">
-  <div class="sheet">
-    <div class="sheet-handle"></div>
-    <div class="panel-title" style="margin-bottom:6px;">
-      <span>🤝 Пришли от друга?</span>
-      <button class="btn btn-secondary btn-sm" onclick="closeSheet('refFriendSheetBackdrop')">✕</button>
-    </div>
-    <div class="panel-sub">Выбери игрока из списка или введи его никнейм — после входа ты получишь +300 BC, а друг +500 BC.</div>
-    <div class="field">
-      <input id="refFriendSearchInput" class="input" placeholder="Поиск игрока по нику..." oninput="renderRefFriendPicker()">
-    </div>
-    <div id="refFriendPickerList" style="max-height:240px;overflow-y:auto;display:flex;flex-direction:column;gap:6px;margin-bottom:10px;"></div>
-    <button class="btn btn-gold btn-full" onclick="applyPickedReferrer()">Подтвердить ник друга</button>
-  </div>
-</div>
-
-<!-- PLAYER SHOWCASE MODAL (BEST WIN + LAST 3 BETS) -->
+<!-- PLAYER SHOWCASE MODAL -->
 <div id="playerShowcaseBackdrop" class="sheet-backdrop" onclick="closeSheetOnBackdrop(event, 'playerShowcaseBackdrop')">
   <div class="sheet">
     <div class="sheet-handle"></div>
@@ -1922,7 +1867,7 @@
   </div>
 </div>
 
-<!-- FULL TOP-100 LEADERBOARD MODAL (10 PAGES + EASTER EGG LOWTAB) -->
+<!-- FULL TOP-100 LEADERBOARD MODAL -->
 <div id="fullLeaderboardBackdrop" class="sheet-backdrop" onclick="closeSheetOnBackdrop(event, 'fullLeaderboardBackdrop')">
   <div class="sheet">
     <div class="sheet-handle"></div>
@@ -1954,7 +1899,7 @@
         Раздел со ссылкой на Telegram-канал автора, где будут публиковаться регулярные розыгрыши и раздачи фрибетов, сейчас находится <strong>в разработке</strong>.
       </div>
       <div style="font-size:12px;color:var(--text-dim);line-height:1.5;">
-        Если администратор выдал тебе промокод (например, <code style="color:var(--yellow);">MAJOR2026</code>), введи его в поле выше — фрибеты начислятся мгновенно.
+        Если администратор выдал тебе промокод, введи его в поле выше — фрибеты начислятся мгновенно.
       </div>
     </div>
     <button class="btn btn-gold btn-full" onclick="closeSheet('promoInfoSheetBackdrop')">Понятно</button>
@@ -2096,15 +2041,14 @@ let chatSubscribed = false;
 
 let lbCurrentPage = 1;
 let adminModTab = 'all';
-let pickedRefNick = '';
 let coupon = [];
 let collapsedTournaments = {};
 
 let currentTab = 'events';
 let subMode = 'prematch';
+let liveSubTab = 'now';
 let betsSub = 'active';
 let filterSport = 'Все';
-let filterMajorOnly = false;
 let filterTournament = 'all';
 let lineSearchQuery = '';
 let activeSheetEventId = null;
@@ -2150,7 +2094,7 @@ function formatCooldownLeft(msLeft) {
   return h > 0 ? `${h}ч ${m}м` : `${m}м`;
 }
 
-/* ================= REFERRAL SYSTEM (?ref= & FRIEND PICKER) ================= */
+/* ================= REFERRAL (ONLY ON REGISTRATION) ================= */
 
 function captureUrlReferral() {
   try {
@@ -2158,6 +2102,8 @@ function captureUrlReferral() {
     const ref = (params.get('ref') || '').trim().toLowerCase().replace(/^@+/, '');
     if (ref) {
       localStorage.setItem('betlove_pending_ref', ref);
+      const inp = document.getElementById('signupRefInput');
+      if (inp && !inp.value) inp.value = ref;
     }
     const savedRef = localStorage.getItem('betlove_pending_ref') || '';
     const banner = document.getElementById('refBannerBox');
@@ -2169,106 +2115,19 @@ function captureUrlReferral() {
   } catch (e) {}
 }
 
-async function openRefFriendModal() {
-  pickedRefNick = localStorage.getItem('betlove_pending_ref') || '';
-  document.getElementById('refFriendSearchInput').value = '';
-  if (leaderboardList.length === 0) {
-    const { data } = await sb.from('profiles').select('id, username, balance').eq('is_banned', false).order('balance', { ascending: false }).limit(100);
-    if (data) leaderboardList = data;
-  }
-  renderRefFriendPicker();
-  document.getElementById('refFriendSheetBackdrop').classList.add('open');
-}
-
-function renderRefFriendPicker() {
-  const q = (document.getElementById('refFriendSearchInput')?.value || '').trim().toLowerCase().replace(/^@+/, '');
-  const list = document.getElementById('refFriendPickerList');
-  if (!list) return;
-
-  const matches = leaderboardList
-    .filter(p => !currentUser || p.id !== currentUser.id)
-    .filter(p => !q || String(p.username || '').toLowerCase().includes(q))
-    .slice(0, 30);
-
-  if (matches.length === 0) {
-    list.innerHTML = `<div style="font-size:12px;color:var(--text-dim);padding:8px;">Игроки не найдены</div>`;
-    return;
-  }
-
-  list.innerHTML = matches.map(p => {
-    const active = pickedRefNick === p.username;
-    return `
-      <button type="button" class="lb-row ${active ? 'me' : ''}" style="width:100%;margin-bottom:0;text-align:left;" onclick="pickedRefNick='${p.username}';renderRefFriendPicker();">
-        <strong style="color:#fff;">@${p.username}</strong>
-        <span class="num" style="font-size:11.5px;color:var(--green);">${formatShort(p.balance)} BC</span>
-      </button>
-    `;
-  }).join('');
-}
-
-async function applyPickedReferrer() {
-  const typed = (document.getElementById('refFriendSearchInput')?.value || '').trim().replace(/^@+/, '');
-  const chosen = (pickedRefNick || typed).trim().toLowerCase();
-  if (!chosen) {
-    showToast('Выбери игрока или введи его ник');
-    return;
-  }
-
-  localStorage.setItem('betlove_pending_ref', chosen);
-  const banner = document.getElementById('refBannerBox');
-  const nickEl = document.getElementById('refBannerNick');
-  if (banner && nickEl) {
-    nickEl.textContent = `@${chosen}`;
-    banner.classList.remove('hidden');
-  }
-  closeSheet('refFriendSheetBackdrop');
-
-  if (currentUser) {
-    const { data, error } = await sb.rpc('apply_referral_by_username', { p_referrer_username: chosen });
-    if (error || !data?.ok) {
-      showToast('⚠️ ' + (data?.error || error?.message || 'Не удалось привязать'));
-      return;
-    }
-    localStorage.removeItem('betlove_pending_ref');
-    await syncAllCloudData(false);
-    showToast(`🎁 Привязан @${data.referrer}! Начислено +${data.my_bonus} BC`);
-  } else {
-    showToast(`✅ Ник @${chosen} сохранён! Бонус начислится после входа`);
-  }
-}
-
-async function bindReferrerFromProfile() {
-  const nick = (document.getElementById('profileRefNickInput')?.value || '').trim();
-  if (!nick) {
-    showToast('Введи ник друга');
-    return;
-  }
-  const { data, error } = await sb.rpc('apply_referral_by_username', { p_referrer_username: nick });
-  if (error || !data?.ok) {
-    showToast('⚠️ ' + (data?.error || error?.message || 'Не удалось привязать'));
-    return;
-  }
-  document.getElementById('profileRefNickInput').value = '';
-  await syncAllCloudData(false);
-  showToast(`🎁 Друг @${data.referrer} привязан! +${data.my_bonus} BC`);
-}
-
 function copyMyRefLink() {
   if (!userProfile?.username) return;
-  const baseUrl = window.location.origin + window.location.pathname;
-  const link = `${baseUrl}?ref=${encodeURIComponent(userProfile.username)}`;
+  const link = `${window.location.origin}${window.location.pathname}?ref=${encodeURIComponent(userProfile.username)}`;
   if (navigator.clipboard) navigator.clipboard.writeText(link).catch(() => {});
   showToast('📋 Реферальная ссылка скопирована!');
 }
 
-/* ================= RULES MODAL & ACCEPTANCE ================= */
+/* ================= RULES ================= */
 
 function openRulesModal(readOnly = false) {
   isRulesReadOnlyModal = readOnly;
   const btn = document.getElementById('rulesModalAcceptBtn');
-  if (btn) {
-    btn.textContent = readOnly ? 'Понятно' : '✅ Я ознакомился и принимаю правила';
-  }
+  if (btn) btn.textContent = readOnly ? 'Понятно' : '✅ Я ознакомился и принимаю правила';
   document.getElementById('rulesSheetBackdrop').classList.add('open');
 }
 
@@ -2286,11 +2145,8 @@ function acceptRulesFromModal() {
 
 function onRulesCheckboxChange() {
   const accepted = !!document.getElementById('authRulesCheckbox')?.checked;
-  if (accepted) {
-    localStorage.setItem('betlove_rules_accepted', '1');
-  } else {
-    localStorage.removeItem('betlove_rules_accepted');
-  }
+  if (accepted) localStorage.setItem('betlove_rules_accepted', '1');
+  else localStorage.removeItem('betlove_rules_accepted');
 }
 
 async function confirmExistingUserRules() {
@@ -2299,20 +2155,18 @@ async function confirmExistingUserRules() {
     showToast('⚠️ Поставь галочку, что принимаешь правила BetLove');
     return;
   }
-
   const { error } = await sb.rpc('accept_user_rules');
   if (error) {
     showToast('❌ ' + error.message);
     return;
   }
-
   localStorage.setItem('betlove_rules_accepted', '1');
   document.getElementById('rulesGate').classList.add('hidden');
   await syncAllCloudData(false);
-  showToast('✅ Правила приняты! Приятной игры');
+  showToast('✅ Правила приняты!');
 }
 
-/* ================= BOOKMAKER SOURCE SETTINGS ================= */
+/* ================= BOOKMAKER SOURCES ================= */
 
 function getEventBookmaker(ev) {
   const id = String(ev?.id || '');
@@ -2359,13 +2213,9 @@ async function saveGlobalVisibleBookmakers() {
     manual: !!document.getElementById('visManual')?.checked
   };
   globalVisibleBookmakers = nextVal;
-
   const { error } = await sb.rpc('admin_set_visible_bookmakers', { p_value: nextVal });
-  if (error) {
-    showToast('❌ ' + error.message);
-  } else {
-    showToast('✅ Видимость БК обновлена для всех игроков');
-  }
+  if (error) showToast('❌ ' + error.message);
+  else showToast('✅ Видимость БК обновлена');
   renderEventsTab();
 }
 
@@ -2377,9 +2227,7 @@ function setAdminSourceView(val) {
 
 function isEventAllowedByBookmaker(ev, isAdmin) {
   const src = getEventBookmaker(ev);
-  if (isAdmin && adminSourceView !== 'all') {
-    return src === adminSourceView;
-  }
+  if (isAdmin && adminSourceView !== 'all') return src === adminSourceView;
   return globalVisibleBookmakers[src] !== false;
 }
 
@@ -2390,15 +2238,13 @@ function setAuthMode(mode) {
   document.getElementById('authTabLogin').classList.toggle('active', mode === 'login');
   document.getElementById('authTabSignup').classList.toggle('active', mode === 'signup');
   document.getElementById('authSubmitBtn').textContent = mode === 'login' ? 'Войти в аккаунт' : 'Создать аккаунт (1000 BC)';
+  document.getElementById('signupRefField').classList.toggle('hidden', mode !== 'signup');
   document.getElementById('authErrorMsg').textContent = '';
 
   const checkWrap = document.getElementById('authRulesCheckWrap');
   const prevAccepted = localStorage.getItem('betlove_rules_accepted') === '1';
-  if (mode === 'signup') {
-    checkWrap.classList.remove('hidden');
-  } else {
-    checkWrap.classList.toggle('hidden', prevAccepted);
-  }
+  if (mode === 'signup') checkWrap.classList.remove('hidden');
+  else checkWrap.classList.toggle('hidden', prevAccepted);
 }
 
 function usernameToEmail(nick) {
@@ -2449,7 +2295,8 @@ async function submitCloudAuth() {
         localStorage.setItem('betlove_rules_accepted', '1');
         await sb.rpc('accept_user_rules');
         await sb.rpc('log_user_ip');
-        const pendingRef = localStorage.getItem('betlove_pending_ref');
+        const typedRef = (document.getElementById('signupRefInput')?.value || '').trim();
+        const pendingRef = typedRef || localStorage.getItem('betlove_pending_ref') || '';
         if (pendingRef) {
           await sb.rpc('apply_referral_by_username', { p_referrer_username: pendingRef });
           localStorage.removeItem('betlove_pending_ref');
@@ -2470,11 +2317,7 @@ async function submitCloudAuth() {
           await sb.rpc('accept_user_rules');
         }
         await sb.rpc('log_user_ip');
-        const pendingRef = localStorage.getItem('betlove_pending_ref');
-        if (pendingRef) {
-          await sb.rpc('apply_referral_by_username', { p_referrer_username: pendingRef });
-          localStorage.removeItem('betlove_pending_ref');
-        }
+        localStorage.removeItem('betlove_pending_ref');
         await onUserAuthenticated();
       }
     }
@@ -2510,7 +2353,7 @@ async function syncAllCloudData(notify = false) {
   const [profRes, evRes, betsRes] = await Promise.all([
     sb.from('profiles').select('*').eq('id', currentUser.id).single(),
     sb.from('events').select('*').order('start_time', { ascending: true }),
-    sb.from('bets').select('*').eq('user_id', currentUser.id).order('created_at', { ascending: false }).limit(60),
+    sb.from('bets').select('*').eq('user_id', currentUser.id).order('created_at', { ascending: false }).limit(120),
     loadGlobalVisibleBookmakers()
   ]);
 
@@ -2536,7 +2379,10 @@ async function syncAllCloudData(notify = false) {
   renderHeader();
   renderAdminVisibility();
   renderCouponUI();
-  if (currentTab === 'events' && subMode !== 'nardy') renderEventsTab();
+  if (currentTab === 'events') {
+    if (subMode === 'nardy') renderNardyTab();
+    else renderEventsTab();
+  }
   if (currentTab === 'bets') renderBetsTab();
   if (currentTab === 'farm') renderFarmTab();
   if (currentTab === 'stats') renderStatsTab();
@@ -2567,7 +2413,7 @@ async function claimAdminRights() {
   showToast('👑 Права администратора активированы!');
 }
 
-/* ================= ADMIN USER MODERATION + BANNED LIST ================= */
+/* ================= ADMIN USERS & BANNED LIST ================= */
 
 function setAdminModTab(tab) {
   adminModTab = tab;
@@ -2580,9 +2426,7 @@ async function loadAdminUsers() {
   if (!userProfile?.is_admin) return;
   const search = document.getElementById('adminUserSearchInput')?.value || '';
   const { data, error } = await sb.rpc('admin_list_users', { p_search: search });
-  if (!error && Array.isArray(data)) {
-    adminUsersCache = data;
-  }
+  if (!error && Array.isArray(data)) adminUsersCache = data;
   renderAdminUsersFromCache();
 }
 
@@ -2661,13 +2505,11 @@ async function adminToggleBan(targetId, username, shouldBan) {
 
 async function adminZeroBalance(targetId, username) {
   if (!confirm(`Обнулить весь баланс (BC и ФР) игроку @${username}?`)) return;
-
   const { data, error } = await sb.rpc('admin_reset_balance', { p_target_id: targetId });
   if (error || !data?.ok) {
     showToast('❌ ' + (data?.error || error?.message || 'Ошибка'));
     return;
   }
-
   showToast(`💸 Баланс игрока @${username} обнулён`);
   await loadAdminUsers();
   await loadLeaderboard();
@@ -2675,13 +2517,11 @@ async function adminZeroBalance(targetId, username) {
 
 async function adminDeleteAccount(targetId, username) {
   if (!confirm(`Полностью удалить аккаунт @${username} и все его ставки?`)) return;
-
   const { data, error } = await sb.rpc('admin_delete_user', { p_target_id: targetId });
   if (error || !data?.ok) {
     showToast('❌ ' + (data?.error || error?.message || 'Ошибка'));
     return;
   }
-
   showToast(`🗑 Аккаунт @${username} удалён`);
   await loadAdminUsers();
   await loadLeaderboard();
@@ -2769,11 +2609,8 @@ async function sendChatMessage() {
     message: text
   });
 
-  if (error) {
-    showToast('❌ ' + error.message);
-  } else {
-    await loadChatMessages();
-  }
+  if (error) showToast('❌ ' + error.message);
+  else await loadChatMessages();
 }
 
 async function deleteChatMsg(msgId) {
@@ -2782,7 +2619,7 @@ async function deleteChatMsg(msgId) {
   renderChatFeed();
 }
 
-/* ================= PLAYER SHOWCASE MODAL (BEST WIN + LAST 3 BETS) ================= */
+/* ================= PLAYER SHOWCASE ================= */
 
 async function openPlayerShowcase(targetId) {
   const box = document.getElementById('playerShowcaseContent');
@@ -2821,7 +2658,7 @@ async function openPlayerShowcase(targetId) {
           <div class="promo-item-row">
             <div style="min-width:0;flex:1;">
               <div style="font-size:12px;font-weight:700;color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${firstMatch}</div>
-              <div style="font-size:10.5px;color:var(--text-dim);" class="num">${b.bet_type} • ${Number(b.total_odd || 1).toFixed(2)}x • Ставка ${formatShort(b.stake)}</div>
+              <div style="font-size:10.5px;color:var(--text-dim);" class="num">${b.bet_type} • Исх. кэф ${Number(b.total_odd || 1).toFixed(2)}x • Ставка ${formatShort(b.stake)}</div>
             </div>
             <div class="num" style="font-size:12px;">${stLabel}</div>
           </div>
@@ -2941,7 +2778,7 @@ async function claimDailyStreak() {
   setTimeout(() => ov.classList.remove('active'), 2000);
 }
 
-/* ================= DAILY FORTUNE WHEEL ================= */
+/* ================= DAILY FORTUNE WHEEL (крутится даже во время КД) ================= */
 
 function drawFortuneWheel() {
   const canvas = document.getElementById('fortuneWheelCanvas');
@@ -2984,16 +2821,6 @@ function drawFortuneWheel() {
     ctx.fillText('BC', r - 26, 20);
     ctx.restore();
   }
-
-  for (let i = 0; i < count * 2; i++) {
-    const a = (i * Math.PI) / count;
-    const px = cx + Math.cos(a) * (r - 8);
-    const py = cy + Math.sin(a) * (r - 8);
-    ctx.beginPath();
-    ctx.arc(px, py, 3, 0, Math.PI * 2);
-    ctx.fillStyle = i % 2 === 0 ? '#ffd600' : '#ffffff';
-    ctx.fill();
-  }
 }
 
 function renderFortuneWheelUI() {
@@ -3007,17 +2834,16 @@ function renderFortuneWheelUI() {
   const now = Date.now();
   const isLocked = lastAt > 0 && (now - lastAt) < cooldownMs;
 
+  btn.disabled = false;
   if (isLocked) {
     const leftText = formatCooldownLeft(lastAt + cooldownMs - now);
-    badge.textContent = leftText;
+    badge.textContent = `КД ${leftText}`;
     badge.style.color = 'var(--text-dim)';
-    btn.disabled = true;
-    btn.textContent = `⏳ Доступно через ${leftText}`;
+    btn.textContent = `🎰 Крутить колесо (бонус через ${leftText})`;
   } else {
     badge.textContent = 'Доступно';
     badge.style.color = 'var(--yellow)';
-    btn.disabled = false;
-    btn.textContent = '🎰 Крутить колесо бесплатно';
+    btn.textContent = '🎰 Крутить колесо';
   }
 }
 
@@ -3026,21 +2852,17 @@ async function spinFortuneWheel() {
   const btn = document.getElementById('spinWheelBtn');
   const canvas = document.getElementById('fortuneWheelCanvas');
   const rim = document.getElementById('wheelOuterRim');
-  const pointer = document.getElementById('wheelPointer');
 
   isWheelSpinning = true;
   btn.disabled = true;
   btn.textContent = '🎰 Крутим барабан...';
 
   const { data, error } = await sb.rpc('spin_daily_wheel');
-  if (error || !data?.ok) {
-    isWheelSpinning = false;
-    showToast('⏳ ' + (data?.error || error?.message || 'Колесо пока недоступно'));
-    await syncAllCloudData(false);
-    return;
-  }
+  const canClaimReward = !error && Boolean(data?.ok);
+  const targetSector = canClaimReward
+    ? (Number(data.sector) || 0)
+    : Math.floor(Math.random() * WHEEL_SECTORS.length);
 
-  const targetSector = Number(data.sector) || 0;
   const sectorAngle = 360 / WHEEL_SECTORS.length;
   const targetOffset = (360 - targetSector * sectorAngle) % 360;
   const jitter = (Math.random() - 0.5) * 24;
@@ -3048,74 +2870,35 @@ async function spinFortuneWheel() {
   const delta = ((targetOffset - currentMod + 360) % 360) + 360 * 6 + jitter;
 
   wheelCurrentRotation += delta;
-
   rim.classList.add('spinning-glow');
-  canvas.style.transition = 'transform 4.6s cubic-bezier(0.12, 0.88, 0.22, 1)';
+  canvas.style.transition = 'transform 4.2s cubic-bezier(0.12, 0.88, 0.22, 1)';
   canvas.style.transform = `rotate(${wheelCurrentRotation}deg)`;
 
-  let ticks = 0;
-  const tickTimer = setInterval(() => {
-    ticks++;
-    pointer.classList.remove('tick');
-    void pointer.offsetWidth;
-    pointer.classList.add('tick');
-    if (ticks % 2 === 0) triggerHaptic(8);
-    if (ticks >= 24) clearInterval(tickTimer);
-  }, 175);
-
   setTimeout(async () => {
-    clearInterval(tickTimer);
     rim.classList.remove('spinning-glow');
     isWheelSpinning = false;
-    triggerHaptic(30);
+    triggerHaptic(22);
 
     await syncAllCloudData(false);
+    renderFortuneWheelUI();
 
-    document.getElementById('animBetBadge').textContent = data.reward >= 1500 ? '🔥 ДЖЕКПОТ КОЛЕСА УДАЧИ!' : '🎡 ВЫИГРЫШ В КОЛЕСЕ';
-    document.getElementById('animBetTitle').textContent = `Выпал сектор ${data.reward} BC!`;
-    document.getElementById('animBetStake').textContent = 'Возвращайся завтра за новым вращением';
-    document.getElementById('animBetWinSub').textContent = 'Зачислено на баланс';
-    document.getElementById('animBetWin').textContent = `+${data.reward} BC`;
-    const ov = document.getElementById('betAnimOverlay');
-    ov.classList.add('active');
-    setTimeout(() => ov.classList.remove('active'), 2300);
-  }, 4750);
+    if (canClaimReward) {
+      document.getElementById('animBetBadge').textContent = data.reward >= 1500 ? '🔥 ДЖЕКПОТ КОЛЕСА УДАЧИ!' : '🎡 ВЫИГРЫШ В КОЛЕСЕ';
+      document.getElementById('animBetTitle').textContent = `Выпал сектор ${data.reward} BC!`;
+      document.getElementById('animBetStake').textContent = 'Следующий наградной спин через 20ч';
+      document.getElementById('animBetWinSub').textContent = 'Зачислено на баланс';
+      document.getElementById('animBetWin').textContent = `+${data.reward} BC`;
+      const ov = document.getElementById('betAnimOverlay');
+      ov.classList.add('active');
+      setTimeout(() => ov.classList.remove('active'), 2200);
+    } else {
+      const landed = WHEEL_SECTORS[targetSector]?.label || '100';
+      showToast(`🎡 Выпало ${landed} BC • Награда на КД (тестовый прокрут)`);
+    }
+  }, 4300);
 }
 
-/* ================= PROMO CODES (INCLUDING EASTER EGG LOWTAB) ================= */
-
-const PROMO_K1 = 0x9E3779B9;
-const PROMO_K2 = 0x85EBCA6B;
-const PROMO_K3 = 0xC2B2AE35;
-
-function feistelRound(val16, key32) {
-  let x = (val16 ^ (key32 & 0xFFFF)) >>> 0;
-  x = Math.imul(x | 1, 0x45D9F3B) >>> 0;
-  return ((x >>> 16) ^ (x >>> 7)) & 0xFFFF;
-}
-
-function decodeOpaquePromo(rawCode) {
-  const cleaned = String(rawCode || '').trim().toUpperCase();
-  const match = cleaned.match(/^BLV-([0-9A-F]{4})-([0-9A-F]{4})-([0-9A-F]{4})$/);
-  if (!match) return null;
-  const block32 = parseInt(match[1] + match[2], 16) >>> 0;
-  const sig16 = parseInt(match[3], 16) & 0xFFFF;
-  const expectedSig = ((Math.imul(block32 ^ PROMO_K3, PROMO_K1) >>> 16) ^ (block32 & 0xFFFF)) & 0xFFFF;
-  if (sig16 !== expectedSig) return null;
-  let L = (block32 >>> 16) & 0xFFFF;
-  let R = block32 & 0xFFFF;
-  for (let r = 3; r >= 0; r--) {
-    const k = Math.imul(PROMO_K1 + r, PROMO_K2) >>> 0;
-    const prevR = L;
-    const prevL = (R ^ feistelRound(prevR, k)) & 0xFFFF;
-    L = prevL;
-    R = prevR;
-  }
-  const amount = (L >>> 4) & 0xFFF;
-  const nonce = (((L & 0xF) << 16) | R) >>> 0;
-  if (amount <= 0 || amount > 4095) return null;
-  return { amount, tokenId: `${amount}:${nonce}` };
-}
+/* ================= PROMOS & ADMIN DELETE ================= */
 
 async function redeemPromoCode(overrideCode = null) {
   const input = document.getElementById('promoCodeInput');
@@ -3129,35 +2912,13 @@ async function redeemPromoCode(overrideCode = null) {
   if (btn) btn.disabled = true;
 
   try {
-    const decodedLegacy = decodeOpaquePromo(raw);
-    if (decodedLegacy) {
-      const { error } = await sb.rpc('redeem_promo_secure', {
-        p_token_id: decodedLegacy.tokenId,
-        p_amount: decodedLegacy.amount
-      });
-      if (error) {
-        showToast('⚠️ Промокод уже активирован на этом аккаунте');
-      } else {
-        if (input) input.value = '';
-        await syncAllCloudData(false);
-        triggerHaptic(18);
-        showToast(`🎟 Зачислено +${decodedLegacy.amount} ФР!`);
-      }
-      return;
-    }
-
     const { data, error } = await sb.rpc('redeem_promo', {
       p_user_id: currentUser.id,
       p_code: raw
     });
 
-    if (error) {
-      showToast('❌ ' + error.message);
-      return;
-    }
-
-    if (!data || !data.ok) {
-      showToast('⚠️ ' + (data?.error || 'Не удалось активировать промокод'));
+    if (error || !data || !data.ok) {
+      showToast('⚠️ ' + (data?.error || error?.message || 'Не удалось активировать промокод'));
       return;
     }
 
@@ -3214,8 +2975,19 @@ async function createAdminPromo() {
   document.getElementById('admPromoReward').value = '';
   document.getElementById('admPromoMaxUses').value = '';
   document.getElementById('admPromoExpires').value = '';
-  if (navigator.clipboard) navigator.clipboard.writeText(code).catch(() => {});
-  showToast(`👑 Промокод ${code} создан и скопирован!`);
+  showToast(`👑 Промокод ${code} создан!`);
+  loadAdminPromos();
+}
+
+async function deleteAdminPromo(promoId, code) {
+  if (!userProfile?.is_admin) return;
+  if (!confirm(`Удалить промокод ${code}?`)) return;
+  const { data, error } = await sb.rpc('admin_delete_promo', { p_promo_id: promoId });
+  if (error || !data?.ok) {
+    showToast('❌ ' + (data?.error || error?.message || 'Ошибка удаления'));
+    return;
+  }
+  showToast(`🗑 Промокод ${code} удалён`);
   loadAdminPromos();
 }
 
@@ -3242,13 +3014,11 @@ async function loadAdminPromos() {
   container.innerHTML = data.map((p) => {
     const usesText = p.max_uses ? `${p.used_count || 0} / ${p.max_uses} акт.` : `${p.used_count || 0} / ∞ акт.`;
     const expText = p.expires_at ? `до ${new Date(p.expires_at).toLocaleString('ru-RU', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}` : 'бессрочно';
-    const isExpired = p.expires_at && new Date(p.expires_at).getTime() < Date.now();
-    const isFull = p.max_uses && (p.used_count || 0) >= p.max_uses;
-    const isDead = isExpired || isFull || !p.active;
+    const safeCode = String(p.code || '').replace(/'/g, "\\'");
 
     return `
       <div class="promo-item-row">
-        <div style="min-width:0;">
+        <div style="min-width:0;flex:1;">
           <div>
             <strong style="color:#fff;font-family:monospace;">${p.code}</strong>
             <span style="color:var(--yellow);font-weight:800;margin-left:6px;" class="num">+${p.reward} ФР</span>
@@ -3257,11 +3027,7 @@ async function loadAdminPromos() {
             ${usesText} • ${expText}
           </div>
         </div>
-        <div style="flex-shrink:0;">
-          ${isDead
-            ? '<span style="color:var(--red);font-size:11px;font-weight:800;">Завершён</span>'
-            : '<span style="color:var(--green);font-size:11px;font-weight:800;">Активен</span>'}
-        </div>
+        <button class="btn btn-danger btn-sm" onclick="deleteAdminPromo('${p.id}', '${safeCode}')">🗑 Удалить</button>
       </div>
     `;
   }).join('');
@@ -3382,7 +3148,7 @@ async function adminSettleMatch(eventId, winnerIndex) {
   showToast(`✅ Матч рассчитан! Обновлено ставок: ${data?.settled || 0}`);
 }
 
-/* ================= RENDER HEADER, LINE & COUPON ================= */
+/* ================= HEADER, LINE, LIVE SUB-TABS & 24H RESULTS ================= */
 
 function renderHeader() {
   if (!userProfile) return;
@@ -3406,6 +3172,12 @@ function getEffectiveEventStatus(ev) {
   if (ev.status === 'finished') return 'finished';
   const startMs = new Date(ev.start_time).getTime();
   return Date.now() >= startMs ? 'live' : 'prematch';
+}
+
+function isWithin24Hours(isoDate) {
+  if (!isoDate) return false;
+  const ms = new Date(isoDate).getTime();
+  return Number.isFinite(ms) && (Date.now() - ms) <= 24 * 3600 * 1000;
 }
 
 function formatDuration(ms) {
@@ -3433,26 +3205,12 @@ function renderFilterBar() {
 
 function setSportFilter(sp) {
   filterSport = sp;
-  if (sp !== 'CS2') filterMajorOnly = false;
   filterTournament = 'all';
-  document.getElementById('btnMajorOnly').classList.toggle('active', filterMajorOnly);
-  renderEventsTab();
-}
-
-function toggleMajorOnly() {
-  filterMajorOnly = !filterMajorOnly;
-  if (filterMajorOnly) {
-    filterSport = 'CS2';
-    filterTournament = 'all';
-  }
-  document.getElementById('btnMajorOnly').classList.toggle('active', filterMajorOnly);
   renderEventsTab();
 }
 
 function setTournamentFilter(val) {
   filterTournament = val;
-  if (val !== 'all') filterMajorOnly = false;
-  document.getElementById('btnMajorOnly').classList.toggle('active', filterMajorOnly);
   renderEventsTab();
 }
 
@@ -3475,11 +3233,19 @@ function setSubMode(mode) {
   document.getElementById('subBtnLive').classList.toggle('active', mode === 'live');
   document.getElementById('subBtnNardy').classList.toggle('active', mode === 'nardy');
 
+  document.getElementById('liveSubTabsBar').classList.toggle('hidden', mode !== 'live');
   document.getElementById('lineLiveWrapper').classList.toggle('hidden', mode === 'nardy');
   document.getElementById('nardyWrapper').classList.toggle('hidden', mode !== 'nardy');
 
   if (mode === 'nardy') renderNardyTab();
   else renderEventsTab();
+}
+
+function setLiveSubTab(tab) {
+  liveSubTab = tab;
+  document.getElementById('liveTabNowBtn').classList.toggle('active', tab === 'now');
+  document.getElementById('liveTabFinished24Btn').classList.toggle('active', tab === 'finished24');
+  renderEventsTab();
 }
 
 function isSelectedInCoupon(eventId, marketId, outcomeIndex) {
@@ -3492,26 +3258,32 @@ function renderEventsTab() {
   const allowedEvents = cloudEvents.filter(e => isEventAllowedByBookmaker(e, isAdmin));
 
   const prematchList = allowedEvents.filter(e => getEffectiveEventStatus(e) === 'prematch');
-  const liveList = allowedEvents.filter(e => getEffectiveEventStatus(e) === 'live');
+  const liveNowList = allowedEvents.filter(e => getEffectiveEventStatus(e) === 'live');
+  const finished24List = allowedEvents.filter(e => {
+    if (getEffectiveEventStatus(e) !== 'finished') return false;
+    return isWithin24Hours(e.settled_at || e.start_time);
+  });
 
   document.getElementById('countPrematch').textContent = prematchList.length;
-  document.getElementById('countLive').textContent = liveList.length;
-  document.getElementById('sideEventsCount').textContent = prematchList.length + liveList.length;
+  document.getElementById('countLive').textContent = liveNowList.length;
+  document.getElementById('liveNowCountBadge').textContent = liveNowList.length;
+  document.getElementById('liveFin24CountBadge').textContent = finished24List.length;
+  document.getElementById('sideEventsCount').textContent = prematchList.length + liveNowList.length;
 
   if (subMode === 'nardy') return;
 
-  const sourceList = subMode === 'prematch' ? prematchList : liveList;
+  const sourceList = subMode === 'prematch'
+    ? prematchList
+    : (liveSubTab === 'finished24' ? finished24List : liveNowList);
 
   const tourneySel = document.getElementById('tournamentSelectFilter');
   if (tourneySel) {
     const uniqueT = [...new Set(sourceList
       .filter(e => filterSport === 'Все' || e.category === filterSport)
       .map(e => e.tournament || 'Турнир')
-    )].sort((a, b) => (/major/i.test(a) ? 0 : 1) - (/major/i.test(b) ? 0 : 1));
+    )].sort();
 
-    if (filterTournament !== 'all' && !uniqueT.includes(filterTournament)) {
-      filterTournament = 'all';
-    }
+    if (filterTournament !== 'all' && !uniqueT.includes(filterTournament)) filterTournament = 'all';
 
     tourneySel.innerHTML = `<option value="all">Все турниры (${uniqueT.length})</option>` +
       uniqueT.map(t => `<option value="${t.replace(/"/g, '&quot;')}" ${filterTournament === t ? 'selected' : ''}>${t}</option>`).join('');
@@ -3519,7 +3291,6 @@ function renderEventsTab() {
 
   const filtered = sourceList.filter(ev => {
     if (filterSport !== 'Все' && ev.category !== filterSport) return false;
-    if (filterMajorOnly && !/major/i.test(`${ev.title} ${ev.tournament}`)) return false;
     if (filterTournament !== 'all' && (ev.tournament || 'Турнир') !== filterTournament) return false;
     if (lineSearchQuery) {
       const hay = `${ev.title} ${ev.tournament}`.toLowerCase();
@@ -3532,10 +3303,37 @@ function renderEventsTab() {
   if (filtered.length === 0) {
     container.innerHTML = `
       <div class="empty-box">
-        <div class="empty-title">${subMode === 'prematch' ? 'В линии пока нет матчей' : 'Сейчас нет матчей в Лайве'}</div>
+        <div class="empty-title">${subMode === 'prematch' ? 'В линии пока нет матчей' : (liveSubTab === 'finished24' ? 'За последние 24 часа завершённых матчей нет' : 'Сейчас нет матчей в Лайве')}</div>
         <div class="empty-desc">Проверь выбранную дисциплину, турнир или включённые источники БК.</div>
       </div>
     `;
+    return;
+  }
+
+  if (subMode === 'live' && liveSubTab === 'finished24') {
+    container.innerHTML = filtered.map(ev => {
+      const outs = Array.isArray(ev.outcomes) ? ev.outcomes : [];
+      const winIdx = Number.isInteger(ev.winner_index) ? ev.winner_index : -1;
+      const winText = winIdx === -1 ? 'Возврат' : (outs[winIdx]?.name || 'Победитель определён');
+      const oddsSummary = outs.map(o => `${o.name}: ${Number(o.odd || 1).toFixed(2)}x`).join(' • ');
+      return `
+        <div class="match-card">
+          <div class="match-head-wrap">
+            <div class="match-top">
+              <div class="match-meta">
+                <span class="bo-badge">${ev.category}</span>
+                <span class="src-badge">${ev.tournament || 'Турнир'}</span>
+              </div>
+              <span class="num" style="color:var(--green);font-weight:800;">${winText}</span>
+            </div>
+            <div class="match-title">${ev.title}</div>
+          </div>
+          <div style="font-size:11.5px;color:var(--text-dim);" class="num">
+            Исходный кэф: <strong style="color:var(--yellow);">${oddsSummary || '—'}</strong>
+          </div>
+        </div>
+      `;
+    }).join('');
     return;
   }
 
@@ -3546,22 +3344,15 @@ function renderEventsTab() {
     groups[t].matches.push(ev);
   });
 
-  const sortedEntries = Object.entries(groups).sort(([a], [b]) => {
-    const aMaj = /major/i.test(a) ? 0 : 1;
-    const bMaj = /major/i.test(b) ? 0 : 1;
-    return aMaj - bMaj;
-  });
-
-  container.innerHTML = sortedEntries.map(([tName, grp]) => {
+  container.innerHTML = Object.entries(groups).map(([tName, grp]) => {
     const collapsed = !!collapsedTournaments[tName];
     const safeT = tName.replace(/'/g, "\\'");
-    const isMaj = /major/i.test(tName);
     return `
-      <div class="tourney-group ${collapsed ? 'collapsed' : ''}" ${isMaj ? 'style="border-color:rgba(255,214,0,0.35);"' : ''}>
+      <div class="tourney-group ${collapsed ? 'collapsed' : ''}">
         <div class="tourney-header" onclick="collapsedTournaments['${safeT}'] = !collapsedTournaments['${safeT}']; renderEventsTab();">
           <div class="tourney-left">
             <span class="sport-tag">${grp.category}</span>
-            <span class="tourney-name">${isMaj ? '🏆 ' + tName : tName}</span>
+            <span class="tourney-name">${tName}</span>
           </div>
           <div class="tourney-right">
             <span class="nav-pill-count num">${grp.matches.length}</span>
@@ -3699,7 +3490,7 @@ function openMatchSheet(eventId) {
   document.getElementById('matchSheetBackdrop').classList.add('open');
 }
 
-/* ================= COUPON & SECURE BET PLACEMENT ================= */
+/* ================= COUPON & BETS ================= */
 
 function toggleSelection(eventId, marketId, outcomeIndex) {
   const ev = cloudEvents.find(e => e.id === eventId);
@@ -3727,6 +3518,7 @@ function toggleSelection(eventId, marketId, outcomeIndex) {
     coupon.push({
       eventId: ev.id,
       eventTitle: ev.title,
+      category: ev.category || 'Спорт',
       marketId,
       marketName,
       outcomeIndex,
@@ -3901,7 +3693,7 @@ async function placeBet() {
   setTimeout(() => ov.classList.remove('active'), 1750);
 }
 
-/* ================= NARDY 24/7 ================= */
+/* ================= NARDY 24/7 & 24H RESULTS WITH INITIAL ODD ================= */
 
 function renderDiePips(containerId, faceVal) {
   const box = document.getElementById(containerId);
@@ -3992,6 +3784,40 @@ async function playNardyRound() {
   }, 650);
 }
 
+function renderResults24h() {
+  const container = document.getElementById('results24hContainer');
+  if (!container) return;
+
+  const recent24 = cloudBets.filter(b => b.status !== 'pending' && isWithin24Hours(b.created_at)).slice(0, 12);
+  if (recent24.length === 0) {
+    container.innerHTML = `<div style="font-size:12px;color:var(--text-dim);">За последние 24 часа завершённых игр пока нет.</div>`;
+    return;
+  }
+
+  container.innerHTML = recent24.map(b => {
+    const firstSel = (b.selections || [])[0];
+    const title = firstSel ? (firstSel.eventTitle || firstSel.label) : b.bet_type;
+    const initOdd = Number(b.total_odd || firstSel?.odd || 1).toFixed(2);
+    const outcomeText = b.status === 'won'
+      ? `<span style="color:var(--green);font-weight:800;">Выигрыш +${formatShort(b.payout)} BC</span>`
+      : b.status === 'void'
+        ? `<span style="color:var(--text-dim);font-weight:800;">Возврат</span>`
+        : `<span style="color:var(--red);font-weight:800;">Проигрыш -${formatShort(b.stake)} BC</span>`;
+
+    return `
+      <div class="promo-item-row">
+        <div style="min-width:0;flex:1;">
+          <div style="font-size:12px;font-weight:700;color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${title}</div>
+          <div style="font-size:10.5px;color:var(--text-dim);" class="num">
+            ${b.bet_type} • Исходный кэф: <strong style="color:var(--yellow);">${initOdd}x</strong> • Ставка: ${formatShort(b.stake)}
+          </div>
+        </div>
+        <div class="num" style="font-size:11.5px;">${outcomeText}</div>
+      </div>
+    `;
+  }).join('');
+}
+
 function renderNardyTab() {
   renderDiePips('redDieBox', nardyCurrentRed);
   renderDiePips('yellowDieBox', nardyCurrentYellow);
@@ -4037,9 +3863,11 @@ function renderNardyTab() {
   const playBtn = document.getElementById('nardyPlayBtn');
   playBtn.disabled = isNardyRolling;
   playBtn.textContent = isNardyRolling ? '🎲 Бросок...' : (nardyPicks.length > 0 ? `🎲 Бросить (${formatShort(totalStake)} BC)` : '🎲 Сделать прогноз');
+
+  renderResults24h();
 }
 
-/* ================= BETS & LEADERBOARD (TOP-5 + TOP-100 + EASTER EGG LOWTAB) ================= */
+/* ================= BETS, DISCIPLINE STATS & LEADERBOARD ================= */
 
 function setBetsSub(sub) {
   betsSub = sub;
@@ -4075,7 +3903,7 @@ function renderBetsTab() {
     return `
       <div class="panel" style="padding:12px;">
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;font-size:12.5px;">
-          <div>${isFb ? '<span class="fb-badge">ФРИБЕТ</span> ' : ''}<strong>${b.bet_type} • <span class="num" style="color:var(--yellow);">${Number(b.total_odd).toFixed(2)}x</span></strong></div>
+          <div>${isFb ? '<span class="fb-badge">ФРИБЕТ</span> ' : ''}<strong>${b.bet_type} • Исх. кэф <span class="num" style="color:var(--yellow);">${Number(b.total_odd).toFixed(2)}x</span></strong></div>
           ${statusBadge}
         </div>
         ${(b.selections || []).map(s => `
@@ -4092,6 +3920,48 @@ function renderBetsTab() {
   }).join('');
 }
 
+function renderDisciplineStats() {
+  const box = document.getElementById('disciplineStatsContainer');
+  if (!box) return;
+
+  const map = {};
+  cloudBets.forEach(b => {
+    const firstSel = (b.selections || [])[0];
+    let disc = firstSel?.category || (b.bet_type === 'Нарды' ? 'Нарды' : null);
+    if (!disc) {
+      const ev = firstSel?.eventId ? cloudEvents.find(e => e.id === firstSel.eventId) : null;
+      disc = ev?.category || 'Прочее';
+    }
+    if (!map[disc]) map[disc] = { count: 0, turnover: 0, profit: 0 };
+    const stake = Number(b.stake || 0);
+    const payout = Number(b.payout || 0);
+    map[disc].count += 1;
+    map[disc].turnover += stake;
+    if (b.status === 'won') map[disc].profit += (payout - stake);
+    else if (b.status === 'lost') map[disc].profit -= stake;
+  });
+
+  const entries = Object.entries(map).sort((a, b) => b[1].count - a[1].count);
+  if (entries.length === 0) {
+    box.innerHTML = `<div style="font-size:12px;color:var(--text-dim);">Сделай первую ставку, чтобы увидеть разбивку по дисциплинам.</div>`;
+    return;
+  }
+
+  box.innerHTML = entries.map(([disc, st]) => {
+    const pColor = st.profit > 0 ? 'var(--green)' : st.profit < 0 ? 'var(--red)' : 'var(--text-dim)';
+    const sign = st.profit > 0 ? '+' : '';
+    return `
+      <div class="promo-item-row">
+        <div>
+          <strong style="color:#fff;">${disc}</strong>
+          <span style="font-size:11px;color:var(--text-dim);margin-left:6px;" class="num">Ставок: ${st.count} • Оборот: ${formatShort(st.turnover)} BC</span>
+        </div>
+        <strong class="num" style="color:${pColor};font-size:12px;">${sign}${formatShort(st.profit)} BC</strong>
+      </div>
+    `;
+  }).join('');
+}
+
 function renderFarmTab() {
   document.getElementById('farmFreebetBadge').textContent = `${Math.round(userProfile?.freebet_balance || 0)} ФР`;
   renderDailyStreakUI();
@@ -4100,10 +3970,6 @@ function renderFarmTab() {
   const refInput = document.getElementById('myRefLinkInput');
   if (refInput && userProfile?.username) {
     refInput.value = `${window.location.origin}${window.location.pathname}?ref=${encodeURIComponent(userProfile.username)}`;
-  }
-  const bindRow = document.getElementById('profileBindRefRow');
-  if (bindRow) {
-    bindRow.classList.toggle('hidden', Boolean(userProfile?.referred_by || userProfile?.ref_reward_claimed));
   }
 
   const isAdmin = Boolean(userProfile && userProfile.is_admin);
@@ -4171,14 +4037,13 @@ function renderFullLeaderboardPage(page) {
     listEl.innerHTML = slice.map((p, i) => renderLbRowHtml(p, startIdx + i + 1)).join('');
   }
 
-  // Пасхалка LOWTAB появляется на последней странице (10-й) или в самом конце списка
   const eggBox = document.getElementById('easterEggContainer');
   const isAtVeryEnd = page === totalPages || slice.length < perPage;
   if (eggBox) {
     if (isAtVeryEnd) {
       eggBox.innerHTML = `
         <div class="easter-egg-box">
-          <div style="font-size:12px;font-weight:800;color:#fff;">🕵️ Ты долистал Топ до самого дна! Секретный пасхальный код:</div>
+          <div style="font-size:12px;font-weight:800;color:#fff;">🕵️ Ты долистал Топ до самого конца! Секретный пасхальный код:</div>
           <div class="secret-code-pill">LOWTAB</div>
           <div>
             <button type="button" class="btn btn-gold btn-sm" onclick="redeemPromoCode('LOWTAB')">✨ Активировать LOWTAB</button>
@@ -4209,18 +4074,16 @@ function renderStatsTab() {
   document.getElementById('stTurnover').textContent = `${Math.round(userProfile.total_turnover || 0)} BC`;
   document.getElementById('profileUsernameText').textContent = `@${userProfile.username}`;
 
+  renderDisciplineStats();
+
   const lbBox = document.getElementById('leaderboardTop5Container');
   if (leaderboardList.length === 0) {
     lbBox.innerHTML = `<div style="font-size:12px;color:var(--text-dim);">Загрузка рейтинга...</div>`;
-    return;
+  } else {
+    lbBox.innerHTML = leaderboardList.slice(0, 5).map((p, idx) => renderLbRowHtml(p, idx + 1)).join('');
   }
 
-  const top5 = leaderboardList.slice(0, 5);
-  lbBox.innerHTML = top5.map((p, idx) => renderLbRowHtml(p, idx + 1)).join('');
-
-  if (userProfile.is_admin) {
-    loadAdminUsers();
-  }
+  if (userProfile.is_admin) loadAdminUsers();
 }
 
 /* ================= NAVIGATION & INIT ================= */
